@@ -35,13 +35,13 @@ export default function HomePage() {
   return (
     <div className="bg-[#f7f7f3] text-[#171717]">
       <section className="grid min-h-[100svh] grid-cols-1 lg:grid-cols-[1fr_29vw]">
-        <div className="flex bg-[#2f2f2d] px-6 pb-10 pt-28 text-white sm:px-10 sm:pb-14 lg:min-h-[90svh] lg:px-20 lg:pb-20 lg:pt-36 xl:px-28">
-          <div className="flex w-full max-w-3xl flex-col justify-center">
-            <h1 className="max-w-4xl text-5xl font-black leading-[0.95] tracking-normal text-white sm:text-6xl lg:text-7xl">
+        <div className="flex bg-[#2f2f2d] px-6 pb-16 pt-36 text-white sm:px-10 sm:pb-20 lg:min-h-[90svh] lg:px-20 lg:pb-24 lg:pt-44 xl:px-28">
+          <div className="flex w-full max-w-3xl flex-col items-center justify-center text-center sm:items-start sm:text-left">
+            <h1 className="max-w-4xl text-4xl font-black leading-[0.95] tracking-normal text-white sm:text-5xl lg:text-6xl">
               Build What You Couldn&apos;t Alone
             </h1>
 
-            <div className="mt-7 grid max-w-xl grid-cols-[1fr_auto_1fr] gap-3 text-lg font-bold leading-tight text-white sm:mt-10 sm:gap-5 sm:text-3xl">
+            <div className="mt-5 grid max-w-xl grid-cols-[1fr_auto_1fr] gap-3 text-base font-bold leading-tight text-white sm:mt-8 sm:gap-4 sm:text-2xl">
               <div className="space-y-2">
                 {actions.map(([left]) => (
                   <p key={left}>{left}</p>
@@ -55,12 +55,12 @@ export default function HomePage() {
               </div>
             </div>
 
-            <p className="mt-7 max-w-xl text-base font-semibold leading-snug text-white/85 sm:mt-10 sm:text-xl">
+            <p className="mt-5 max-w-xl text-sm font-semibold leading-snug text-white/85 sm:mt-8 sm:text-lg">
               GroupHub turns early ideas into focused project teams, matching
               open roles with people ready to learn, contribute, and ship.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:mt-12 sm:flex-row">
+            <div className="mt-8 flex flex-col items-center gap-3 sm:mt-12 sm:flex-row sm:justify-start">
               <Link
                 href="/dashboard"
                 className="inline-flex h-12 w-full items-center justify-center rounded-md border border-white/70 px-8 text-sm font-semibold text-white transition hover:bg-white hover:text-[#2f2f2d] sm:h-11 sm:w-fit"
@@ -78,7 +78,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative flex items-center justify-center border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-8 sm:px-8 sm:py-10 lg:min-h-[90svh] lg:border-b-0 lg:px-10 lg:py-16">
+        <div className="relative flex items-center justify-center border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-12 sm:px-8 sm:py-14 lg:min-h-[90svh] lg:border-b-0 lg:px-10 lg:py-20">
           <Image
             src="/home-team-illustration.png"
             alt="Students collaborating around a table"
