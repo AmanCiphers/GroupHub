@@ -23,12 +23,17 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="border-t border-[#d9d8d2] bg-[#2f2f2d] text-white">
+    <footer className="relative overflow-hidden border-t border-[#d9d8d2] bg-[#2f2f2d] text-white">
+      <div className="pointer-events-none absolute -bottom-10 -right-10 select-none opacity-[0.04]">
+        <img src="/white_clover.svg" alt="" className="h-auto scale-200sm:h-96" />
+      </div>
       <div className="px-6 py-12 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
-            <Link href="/" className="inline-flex items-center" aria-label="GroupHub home">
+            <Link href="/" className="inline-flex items-center gap-2" aria-label="GroupHub home">
               <img src="/Logo.svg" alt="" className="h-12 w-auto" />
+              <h1> x </h1>
+              <img src="/white_clover.svg" alt="" className="h-12 w-auto" />
             </Link>
             <p className="mt-5 max-w-sm text-sm font-semibold leading-relaxed text-white/65">
               Turn early ideas into focused project teams with visible roles,
@@ -75,7 +80,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-white/15 pt-8">
           <p className="text-sm font-semibold text-white/50">
-            {new Date().getFullYear()} GroupHub. All rights reserved.
+            {new Date().getFullYear()} GroupHub — A <span className="font-bold underline"><a target="_blank" href="https://cloverforge.vercel.app/">CloverForge</a></span> product. All rights reserved.
           </p>
         </div>
       </div>

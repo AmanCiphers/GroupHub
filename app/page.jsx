@@ -133,9 +133,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-[#f7f7f3] px-6 py-14 sm:px-10 sm:py-20 lg:px-20 xl:px-28">
-        <div className="grid gap-8 lg:grid-cols-3 lg:gap-12">
-          <div className="lg:col-span-1">
+      <section className="bg-[#f7f7f3] px-6 py-14 sm:px-10 sm:py-20 lg:px-20 xl:px-28 flex flex-col items-center justify-center ">
+        <div className="grid gap-8 lg:grid-cols-3 lg:gap-12 justify-between  lg:pl-60">
+          <div className="lg:col-span-1 ">
             <div className="flex size-12 items-center justify-center rounded-full bg-[#2f2f2d] text-white">
               <Users className="size-5" />
             </div>
