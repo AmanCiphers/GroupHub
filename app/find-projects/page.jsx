@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
 import {
   ArrowUpRight,
   Bookmark,
@@ -15,15 +16,10 @@ import {
   Sparkles,
   Users,
 } from "lucide-react"
+import { apiFetch, getAccessToken, toQueryString } from "@/lib/api"
 
-const categories = [
-  { name: "All", count: 248 },
-  { name: "Technology", count: 89 },
-  { name: "Design", count: 56 },
-  { name: "Business", count: 42 },
-  { name: "Marketing", count: 31 },
-  { name: "Gaming", count: 18 },
-  { name: "Social Impact", count: 12 },
+const fallbackCategories = [
+  "All", "Technology", "Design", "Business", "Marketing", "Gaming", "Social Impact",
 ]
 
 const skillFilters = [
@@ -39,157 +35,108 @@ const skillFilters = [
   "Data Science",
 ]
 
-const projects = [
-  {
-    id: 1,
-    title: "AI-Powered Study Companion",
-    description:
-      "A study assistant that turns messy notes into flashcards, practice plans, and progress insights.",
-    owner: "Alex Chen",
-    ownerAvatar: "AC",
-    category: "Technology",
-    skills: ["React", "Python", "Machine Learning"],
-    roles: ["Frontend", "ML Builder"],
-    teamSize: 4,
-    spotsOpen: 2,
-    location: "Remote",
-    postedTime: "2 days ago",
-    applicants: 12,
-    match: 94,
-    stage: "Prototype",
-    commitment: "6 hrs/week",
-  },
-  {
-    id: 2,
-    title: "Sustainable Fashion Marketplace",
-    description:
-      "A trust-first marketplace connecting eco-conscious shoppers with sustainable brands and second-hand sellers.",
-    owner: "Sarah Miller",
-    ownerAvatar: "SM",
-    category: "Business",
-    skills: ["UI/UX", "Node.js", "Marketing"],
-    roles: ["Product Designer", "Growth"],
-    teamSize: 5,
-    spotsOpen: 3,
-    location: "Remote",
-    postedTime: "1 week ago",
-    applicants: 8,
-    match: 86,
-    stage: "Research",
-    commitment: "4 hrs/week",
-  },
-  {
-    id: 3,
-    title: "Mental Health Check-in App",
-    description:
-      "A mobile check-in tool for daily mood tracking, gentle analytics, and resource recommendations.",
-    owner: "Jordan Lee",
-    ownerAvatar: "JL",
-    category: "Social Impact",
-    skills: ["Mobile", "React Native", "TypeScript"],
-    roles: ["Mobile Dev"],
-    teamSize: 3,
-    spotsOpen: 1,
-    location: "San Francisco, CA",
-    postedTime: "3 days ago",
-    applicants: 15,
-    match: 81,
-    stage: "MVP",
-    commitment: "5 hrs/week",
-  },
-  {
-    id: 4,
-    title: "Local Event Discovery Platform",
-    description:
-      "A community-led platform for discovering meetups, campus events, workshops, and small local gatherings.",
-    owner: "Emily Rodriguez",
-    ownerAvatar: "ER",
-    category: "Technology",
-    skills: ["React", "Node.js", "UI/UX"],
-    roles: ["Backend", "UX Research"],
-    teamSize: 4,
-    spotsOpen: 2,
-    location: "Remote",
-    postedTime: "5 days ago",
-    applicants: 6,
-    match: 78,
-    stage: "Idea",
-    commitment: "3 hrs/week",
-  },
-  {
-    id: 5,
-    title: "Indie Game Studio - RPG Project",
-    description:
-      "A compact indie RPG with a distinct art style, short gameplay loops, and a small collaborative production team.",
-    owner: "Marcus Wong",
-    ownerAvatar: "MW",
-    category: "Gaming",
-    skills: ["Unity", "C#", "2D Art", "Game Design"],
-    roles: ["Game Dev", "2D Artist"],
-    teamSize: 6,
-    spotsOpen: 4,
-    location: "Remote",
-    postedTime: "1 day ago",
-    applicants: 22,
-    match: 73,
-    stage: "Concept",
-    commitment: "6 hrs/week",
-  },
-  {
-    id: 6,
-    title: "Portfolio Website Builder",
-    description:
-      "A focused builder that helps creative professionals publish beautiful portfolios without wrestling with setup.",
-    owner: "Lisa Park",
-    ownerAvatar: "LP",
-    category: "Design",
-    skills: ["React", "Figma", "TypeScript", "CSS"],
-    roles: ["Frontend", "Design Systems"],
-    teamSize: 3,
-    spotsOpen: 1,
-    location: "New York, NY",
-    postedTime: "4 days ago",
-    applicants: 9,
-    match: 90,
-    stage: "MVP",
-    commitment: "4 hrs/week",
-  },
-]
+function formatStage(stage) {
+  return stage
+    ? stage
+        .split("-")
+        .join(" ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : "Idea"
+}
+
+function getOpenRoleStats(project) {
+  const roles = project.roles || []
+  const slotsOpen = roles.reduce((total, role) => total + (role.slotsOpen || 0), 0)
+  const slotsTotal = roles.reduce((total, role) => total + (role.slotsTotal || 0), 0)
+
+  return {
+    slotsOpen,
+    slotsTotal: slotsTotal || project.teamSizeTarget || 1,
+  }
+}
 
 export default function FindProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedSkill, setSelectedSkill] = useState("All")
-  const [savedProjects, setSavedProjects] = useState([])
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [categories, setCategories] = useState(fallbackCategories)
 
-  const toggleSave = (projectId) => {
-    setSavedProjects((prev) =>
-      prev.includes(projectId)
-        ? prev.filter((id) => id !== projectId)
-        : [...prev, projectId]
+  useEffect(() => {
+    apiFetch("/api/v1/metadata")
+      .then((payload) => {
+        const cats = (payload.data.categories || []).map((c) => c.value)
+        setCategories(["All", ...cats])
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadProjects() {
+      setLoading(true)
+      setError("")
+
+      try {
+        const query = toQueryString({
+          q: searchQuery,
+          category: selectedCategory,
+          skill: selectedSkill,
+        })
+        const payload = await apiFetch(`/api/v1/projects${query}`)
+
+        if (!cancelled) {
+          setProjects(payload.data.projects || [])
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(requestError.message)
+          setProjects([])
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    const timeout = window.setTimeout(loadProjects, 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeout)
+    }
+  }, [searchQuery, selectedCategory, selectedSkill])
+
+  const toggleSave = async (project) => {
+    if (!getAccessToken()) {
+      setError("Sign in to save projects.")
+      return
+    }
+
+    const wasSaved = project.isSaved
+
+    setProjects((current) =>
+      current.map((item) =>
+        item.id === project.id ? { ...item, isSaved: !wasSaved } : item
+      )
     )
+
+    try {
+      await apiFetch(`/api/v1/projects/${project.id}/save`, {
+        method: wasSaved ? "DELETE" : "POST",
+      })
+    } catch (requestError) {
+      setError(requestError.message)
+      setProjects((current) =>
+        current.map((item) =>
+          item.id === project.id ? { ...item, isSaved: wasSaved } : item
+        )
+      )
+    }
   }
-
-  const filteredProjects = projects.filter((project) => {
-    const query = searchQuery.toLowerCase()
-    const searchable = [
-      project.title,
-      project.description,
-      project.category,
-      ...project.skills,
-      ...project.roles,
-    ]
-      .join(" ")
-      .toLowerCase()
-
-    const matchesSearch = searchable.includes(query)
-    const matchesCategory =
-      selectedCategory === "All" || project.category === selectedCategory
-    const matchesSkill =
-      selectedSkill === "All" || project.skills.includes(selectedSkill)
-
-    return matchesSearch && matchesCategory && matchesSkill
-  })
 
   return (
     <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
@@ -253,16 +200,15 @@ export default function FindProjectsPage() {
                   <div className="grid gap-1">
                     {categories.map((category) => (
                       <button
-                        key={category.name}
-                        onClick={() => setSelectedCategory(category.name)}
+                        key={category}
+                        onClick={() => setSelectedCategory(category)}
                         className={`flex items-center justify-between px-3 py-2 text-left text-sm font-bold transition ${
-                          selectedCategory === category.name
+                          selectedCategory === category
                             ? "bg-[#2f2f2d] text-white"
                             : "text-[#55544f] hover:bg-[#efeee8] hover:text-[#171717]"
                         }`}
                       >
-                        <span>{category.name}</span>
-                        <span className="text-xs opacity-70">{category.count}</span>
+                        <span>{category}</span>
                       </button>
                     ))}
                   </div>
@@ -273,17 +219,7 @@ export default function FindProjectsPage() {
                     Skills
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedSkill("All")}
-                      className={`border px-3 py-1 text-xs font-black transition ${
-                        selectedSkill === "All"
-                          ? "border-[#171717] bg-[#171717] text-white"
-                          : "border-[#d9d8d2] bg-white text-[#55544f] hover:border-[#171717]"
-                      }`}
-                    >
-                      All
-                    </button>
-                    {skillFilters.map((skill) => (
+                    {["All", ...skillFilters].map((skill) => (
                       <button
                         key={skill}
                         onClick={() => setSelectedSkill(skill)}
@@ -313,21 +249,32 @@ export default function FindProjectsPage() {
             <div className="mb-5 flex flex-col gap-3 border-b border-[#d9d8d2] pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.14em] text-[#62615d]">
-                  {filteredProjects.length} open projects
+                  {loading ? "Loading projects" : `${projects.length} open projects`}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-[#55544f]">
-                  Sorted by best fit and recent activity.
+                  Sorted by recent activity. AI fit ranking comes later.
                 </p>
               </div>
-              <button className="inline-flex h-10 w-fit items-center gap-2 border border-[#171717] bg-[#171717] px-4 text-sm font-black text-white transition hover:bg-transparent hover:text-[#171717]">
+              <Link
+                href="/dashboard"
+                className="inline-flex h-10 w-fit items-center gap-2 border border-[#171717] bg-[#171717] px-4 text-sm font-black text-white transition hover:bg-transparent hover:text-[#171717]"
+              >
                 Post a project
                 <ArrowUpRight className="size-4" />
-              </button>
+              </Link>
             </div>
 
+            {error && (
+              <p className="mb-4 border border-[#171717] bg-white p-3 text-sm font-bold">
+                {error}
+              </p>
+            )}
+
             <div className="grid gap-4">
-              {filteredProjects.map((project) => {
-                const isSaved = savedProjects.includes(project.id)
+              {projects.map((project) => {
+                const roleStats = getOpenRoleStats(project)
+                const roleNames = (project.roles || []).map((role) => role.title)
+                const isSaved = project.isSaved
 
                 return (
                   <article
@@ -342,11 +289,11 @@ export default function FindProjectsPage() {
                           </span>
                           <span className="flex items-center gap-1.5 border border-[#d9d8d2] bg-white px-2.5 py-1 text-xs font-black text-[#55544f]">
                             <CircleDot className="size-3" />
-                            {project.stage}
+                            {formatStage(project.stage)}
                           </span>
                           <span className="flex items-center gap-1.5 border border-[#d9d8d2] bg-white px-2.5 py-1 text-xs font-black text-[#55544f]">
                             <Clock className="size-3" />
-                            {project.commitment}
+                            {project.commitmentLabel || `${project.commitmentHoursPerWeek || 0} hrs/week`}
                           </span>
                         </div>
 
@@ -360,17 +307,11 @@ export default function FindProjectsPage() {
                             </p>
                           </div>
                           <button
-                            onClick={() => toggleSave(project.id)}
+                            onClick={() => toggleSave(project)}
                             className="flex size-10 shrink-0 items-center justify-center border border-[#d9d8d2] bg-white text-[#171717] transition hover:border-[#171717]"
-                            aria-label={
-                              isSaved ? "Unsave project" : "Save project"
-                            }
+                            aria-label={isSaved ? "Unsave project" : "Save project"}
                           >
-                            <Bookmark
-                              className={`size-5 ${
-                                isSaved ? "fill-[#171717]" : ""
-                              }`}
-                            />
+                            <Bookmark className={`size-5 ${isSaved ? "fill-[#171717]" : ""}`} />
                           </button>
                         </div>
 
@@ -380,7 +321,7 @@ export default function FindProjectsPage() {
                               Open roles
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {project.roles.map((role) => (
+                              {(roleNames.length ? roleNames : ["Open role"]).map((role) => (
                                 <span
                                   key={role}
                                   className="border border-[#171717] bg-white px-3 py-1 text-sm font-black text-[#171717]"
@@ -395,7 +336,7 @@ export default function FindProjectsPage() {
                               Skills
                             </p>
                             <div className="flex flex-wrap gap-2">
-                              {project.skills.map((skill) => (
+                              {(project.skills || []).map((skill) => (
                                 <span
                                   key={skill}
                                   className="border border-[#d9d8d2] bg-white px-3 py-1 text-sm font-bold text-[#55544f]"
@@ -410,7 +351,7 @@ export default function FindProjectsPage() {
                         <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[#d9d8d2] pt-4 text-sm font-semibold text-[#55544f]">
                           <span className="flex items-center gap-1.5">
                             <Users className="size-4" />
-                            {project.spotsOpen} of {project.teamSize} spots open
+                            {roleStats.slotsOpen} of {roleStats.slotsTotal} spots open
                           </span>
                           <span className="flex items-center gap-1.5">
                             <MapPin className="size-4" />
@@ -418,7 +359,7 @@ export default function FindProjectsPage() {
                           </span>
                           <span className="flex items-center gap-1.5">
                             <Briefcase className="size-4" />
-                            {project.applicants} applicants
+                            Applications tracked in dashboard
                           </span>
                         </div>
                       </div>
@@ -432,31 +373,34 @@ export default function FindProjectsPage() {
                             <CheckCircle2 className="size-5 text-[#171717]" />
                           </div>
                           <p className="mt-2 text-5xl font-black text-[#171717]">
-                            {project.match}%
+                            --
                           </p>
                           <p className="mt-2 text-sm font-semibold text-[#55544f]">
-                            Based on role, skill, and availability fit.
+                            AI fit scoring is planned for v2.
                           </p>
                         </div>
 
                         <div className="mt-8">
                           <div className="mb-4 flex items-center gap-3">
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                              {project.ownerAvatar}
+                              GH
                             </div>
                             <div>
                               <p className="text-sm font-black text-[#171717]">
-                                {project.owner}
+                                GroupHub builder
                               </p>
                               <p className="text-xs font-semibold text-[#77766f]">
-                                Posted {project.postedTime}
+                                Posted recently
                               </p>
                             </div>
                           </div>
-                          <button className="inline-flex h-11 w-full items-center justify-center gap-2 border border-[#171717] bg-transparent px-4 text-sm font-black text-[#171717] transition hover:bg-[#171717] hover:text-white">
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className="inline-flex h-11 w-full items-center justify-center gap-2 border border-[#171717] bg-transparent px-4 text-sm font-black text-[#171717] transition hover:bg-[#171717] hover:text-white"
+                          >
                             View project
                             <ArrowUpRight className="size-4" />
-                          </button>
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -465,13 +409,13 @@ export default function FindProjectsPage() {
               })}
             </div>
 
-            {filteredProjects.length === 0 && (
+            {!loading && projects.length === 0 && (
               <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-10 text-center">
                 <p className="text-xl font-black text-[#171717]">
                   No projects found.
                 </p>
                 <p className="mt-2 font-semibold text-[#55544f]">
-                  Try a broader search or reset the filters.
+                  Create one from the dashboard or try broader filters.
                 </p>
               </div>
             )}

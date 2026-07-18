@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { CheckCircle, Mail, MapPin, MessageSquare, Send } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 const contactMethods = [
   [Mail, "Email", "hello@grouphub.com", "Send product questions or partnership notes."],
@@ -18,10 +19,36 @@ const faqs = [
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    setSubmitted(true)
+    const form = event.currentTarget
+    setError("")
+    setLoading(true)
+
+    const formData = new FormData(form)
+
+    try {
+      await apiFetch("/api/v1/contact", {
+        method: "POST",
+        body: JSON.stringify({
+          firstName: formData.get("firstName"),
+          lastName: formData.get("lastName"),
+          email: formData.get("email"),
+          subject: formData.get("subject"),
+          message: formData.get("message"),
+        }),
+      })
+
+      setSubmitted(true)
+      form.reset()
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -78,22 +105,31 @@ export default function ContactPage() {
             ) : (
               <form onSubmit={handleSubmit} className="mt-8 grid gap-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Field id="firstName" label="First name" placeholder="John" />
-                  <Field id="lastName" label="Last name" placeholder="Doe" />
+                  <Field id="firstName" name="firstName" label="First name" placeholder="John" />
+                  <Field id="lastName" name="lastName" label="Last name" placeholder="Doe" />
                 </div>
-                <Field id="email" label="Email" type="email" placeholder="john@example.com" />
-                <Field id="subject" label="Subject" placeholder="How can we help?" />
+                <Field id="email" name="email" label="Email" type="email" placeholder="john@example.com" />
+                <Field id="subject" name="subject" label="Subject" placeholder="How can we help?" />
                 <label htmlFor="message" className="block">
                   <span className="text-sm font-black">Message</span>
                   <textarea
                     id="message"
+                    name="message"
                     className="mt-2 min-h-40 w-full border border-[#d9d8d2] bg-white p-3 font-semibold outline-none focus:border-[#171717]"
                     placeholder="Tell us more..."
                     required
                   />
                 </label>
-                <button className="inline-flex h-11 w-fit items-center gap-2 bg-[#171717] px-5 text-sm font-black text-white">
-                  Send message
+                {error && (
+                  <p className="border border-[#171717] bg-white p-3 text-sm font-bold">
+                    {error}
+                  </p>
+                )}
+                <button
+                  className="inline-flex h-11 w-fit items-center gap-2 bg-[#171717] px-5 text-sm font-black text-white disabled:opacity-60"
+                  disabled={loading}
+                >
+                  {loading ? "Sending..." : "Send message"}
                   <Send className="size-4" />
                 </button>
               </form>
@@ -119,12 +155,13 @@ export default function ContactPage() {
   )
 }
 
-function Field({ id, label, type = "text", placeholder }) {
+function Field({ id, name, label, type = "text", placeholder }) {
   return (
     <label htmlFor={id} className="block">
       <span className="text-sm font-black">{label}</span>
       <input
         id={id}
+        name={name || id}
         type={type}
         className="mt-2 h-11 w-full border border-[#d9d8d2] bg-white px-3 font-semibold outline-none focus:border-[#171717]"
         placeholder={placeholder}

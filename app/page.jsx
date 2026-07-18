@@ -1,28 +1,14 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Check, CircleDot, Users } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 const actions = [
   ["Discover Projects", "Join Teams"],
   ["Start Ideas", "Build Proof"],
-]
-
-const projectRoles = [
-  {
-    title: "AI Study Companion",
-    roles: ["Frontend", "ML", "Product"],
-    status: "2 roles open",
-  },
-  {
-    title: "Campus Event Map",
-    roles: ["Design", "Backend"],
-    status: "Recruiting",
-  },
-  {
-    title: "Portfolio Builder",
-    roles: ["React", "UX Writing"],
-    status: "New",
-  },
 ]
 
 const steps = [
@@ -32,6 +18,14 @@ const steps = [
 ]
 
 export default function HomePage() {
+  const [projects, setProjects] = useState([])
+
+  useEffect(() => {
+    apiFetch("/api/v1/projects?limit=3&status=recruiting")
+      .then((payload) => setProjects(payload.data.projects || []))
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="bg-[#f7f7f3] text-[#171717]">
       <section className="grid min-h-[100svh] grid-cols-1 lg:grid-cols-[1fr_29vw]">
@@ -102,33 +96,40 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-3">
-            {projectRoles.map((project) => (
-              <Link
-                href="/find-projects"
-                key={project.title}
-                className="group grid gap-4 rounded-md border border-[#d9d8d2] bg-white p-4 transition hover:border-[#171717] sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#62615d]">
-                    <CircleDot className="size-4" />
-                    {project.status}
+            {projects.map((project) => {
+              const openRoles = (project.roles || []).filter(
+                (r) => r.status === "open" && r.slotsOpen > 0
+              )
+              return (
+                <Link
+                  href={`/projects/${project.id}`}
+                  key={project.id}
+                  className="group grid gap-4 rounded-md border border-[#d9d8d2] bg-white p-4 transition hover:border-[#171717] sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
+                >
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[#62615d]">
+                      <CircleDot className="size-4" />
+                      {openRoles.length > 0
+                        ? `${openRoles.length} role${openRoles.length > 1 ? "s" : ""} open`
+                        : project.status}
+                    </div>
+                    <h3 className="mt-2 text-xl font-black text-[#171717]">
+                      {project.title}
+                    </h3>
                   </div>
-                  <h3 className="mt-2 text-xl font-black text-[#171717]">
-                    {project.title}
-                  </h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {project.roles.map((role) => (
-                    <span
-                      key={role}
-                      className="rounded-full border border-[#d9d8d2] px-3 py-1 text-sm font-semibold text-[#31312f]"
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </div>
-              </Link>
-            ))}
+                  <div className="flex flex-wrap gap-2">
+                    {openRoles.map((role) => (
+                      <span
+                        key={role.id}
+                        className="rounded-full border border-[#d9d8d2] px-3 py-1 text-sm font-semibold text-[#31312f]"
+                      >
+                        {role.title}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </div>
       </section>

@@ -1,29 +1,34 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Award, Flame, Medal, Rocket, Star, Trophy, Users } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
-const topContributors = [
-  ["Jessica Kim", "@jessicak", 12450, 28, 156, "Elite Contributor", ["React", "TypeScript", "UI/UX"]],
-  ["Marcus Chen", "@mchen", 11200, 24, 142, "Top Mentor", ["Python", "ML", "Data Science"]],
-  ["Sarah Williams", "@sarahw", 10850, 31, 128, "Project Leader", ["Product", "Strategy", "Marketing"]],
-]
-
-const leaderboard = [
-  [4, "Alex Johnson", "@alexj", 9800, 19],
-  [5, "Emily Rodriguez", "@emilyr", 9450, 22],
-  [6, "David Park", "@davidp", 8900, 17],
-  [7, "Olivia Martinez", "@oliviam", 8650, 21],
-  [8, "James Wilson", "@jamesw", 8200, 15],
-  [9, "Sophia Lee", "@sophial", 7950, 18],
-  [10, "Daniel Brown", "@danielb", 7700, 14],
-]
-
-const stats = [
-  [Users, "Active contributors", "2,450"],
-  [Rocket, "Projects completed", "1,280"],
-  [Award, "Badges earned", "8,900"],
-  [Flame, "Streak leaders", "156"],
+const periods = [
+  { value: "all", label: "All Time" },
+  { value: "month", label: "This Month" },
+  { value: "week", label: "This Week" },
 ]
 
 export default function LeaderboardPage() {
+  const [period, setPeriod] = useState("all")
+  const [topThree, setTopThree] = useState([])
+  const [leaderboard, setLeaderboard] = useState([])
+  const [stats, setStats] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    apiFetch(`/api/v1/leaderboard${period !== "all" ? `?period=${period}` : ""}`)
+      .then((payload) => {
+        setTopThree(payload.data.topThree || [])
+        setLeaderboard(payload.data.leaderboard || [])
+        setStats(payload.data.stats || [])
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [period])
+
   return (
     <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
       <section className="border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
@@ -45,90 +50,117 @@ export default function LeaderboardPage() {
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map(([Icon, label, value]) => (
-            <div key={label} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
-              <Icon className="size-5" />
-              <p className="mt-4 text-3xl font-black">{value}</p>
-              <p className="mt-1 text-sm font-black uppercase tracking-[0.12em] text-[#77766f]">
-                {label}
-              </p>
-            </div>
-          ))}
+          {(stats.length ? stats : [
+            { label: "Active contributors", value: "--" },
+            { label: "Projects completed", value: "--" },
+            { label: "Team memberships", value: "--" },
+            { label: "Streak leaders", value: "--" },
+          ]).map((stat) => {
+            const Icon = [Users, Rocket, Award, Flame][stats.indexOf(stat)] || Users
+            return (
+              <div key={stat.label} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
+                <Icon className="size-5" />
+                <p className="mt-4 text-3xl font-black">{loading ? "--" : stat.value}</p>
+                <p className="mt-1 text-sm font-black uppercase tracking-[0.12em] text-[#77766f]">
+                  {stat.label}
+                </p>
+              </div>
+            )
+          })}
         </div>
       </section>
 
       <section className="px-6 pb-10 sm:px-10 lg:px-20 xl:px-28">
         <div className="mb-5 flex flex-wrap gap-2">
-          {["All Time", "This Month", "This Week"].map((period, index) => (
+          {periods.map((p) => (
             <button
-              key={period}
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
               className={`border px-4 py-2 text-sm font-black ${
-                index === 0
+                period === p.value
                   ? "border-[#171717] bg-[#171717] text-white"
                   : "border-[#d9d8d2] bg-[#fbfbfa] text-[#55544f]"
               }`}
             >
-              {period}
+              {p.label}
             </button>
           ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          {topContributors.map(([name, username, points, projects, contributions, badge, skills], index) => (
-            <article key={name} className={`border p-5 ${index === 0 ? "border-[#171717] bg-[#2f2f2d] text-white" : "border-[#d9d8d2] bg-[#fbfbfa]"}`}>
-              <div className="flex items-center justify-between gap-4">
-                {index === 0 ? <Trophy className="size-7" /> : <Medal className="size-7" />}
-                <span className={`px-2.5 py-1 text-xs font-black ${index === 0 ? "bg-white text-[#171717]" : "border border-[#d9d8d2] bg-white text-[#55544f]"}`}>
-                  {badge}
-                </span>
-              </div>
-              <div className="mt-6 flex items-center gap-4">
-                <div className={`flex size-14 items-center justify-center rounded-full text-lg font-black ${index === 0 ? "bg-white text-[#171717]" : "bg-[#2f2f2d] text-white"}`}>
-                  {name.split(" ").map((part) => part[0]).join("")}
-                </div>
-                <div>
-                  <h2 className="text-xl font-black">{name}</h2>
-                  <p className={`text-sm font-semibold ${index === 0 ? "text-white/65" : "text-[#77766f]"}`}>{username}</p>
-                </div>
-              </div>
-              <div className="mt-6 grid grid-cols-3 gap-3 border-t border-current/20 pt-5">
-                <Metric value={points.toLocaleString()} label="points" />
-                <Metric value={projects} label="projects" />
-                <Metric value={contributions} label="helps" />
-              </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span key={skill} className={`border px-2.5 py-1 text-xs font-black ${index === 0 ? "border-white/30 text-white/80" : "border-[#d9d8d2] text-[#55544f]"}`}>
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-[#d9d8d2] bg-[#fbfbfa] px-6 py-12 sm:px-10 lg:px-20 xl:px-28">
-        <div className="grid gap-3">
-          {leaderboard.map(([rank, name, username, points, projects]) => (
-            <div key={rank} className="grid gap-4 border border-[#d9d8d2] bg-white p-4 sm:grid-cols-[60px_1fr_auto] sm:items-center">
-              <span className="text-2xl font-black text-[#77766f]">#{rank}</span>
-              <div className="flex items-center gap-4">
-                <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                  {name.split(" ").map((part) => part[0]).join("")}
-                </div>
-                <div>
-                  <h3 className="font-black">{name}</h3>
-                  <p className="text-sm font-semibold text-[#77766f]">{username}</p>
-                </div>
-              </div>
-              <div className="flex gap-8 text-sm font-black">
-                <span>{points.toLocaleString()} pts</span>
-                <span>{projects} projects</span>
-              </div>
+        {loading ? (
+          <p className="text-lg font-black text-[#55544f]">Loading...</p>
+        ) : (
+          <>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {topThree.length === 0 && (
+                <p className="lg:col-span-3 border border-[#d9d8d2] bg-[#fbfbfa] p-6 text-center font-semibold text-[#55544f]">
+                  No contributors yet for this period. Start building to claim the top spot!
+                </p>
+              )}
+              {topThree.map((user, index) => (
+                <article
+                  key={user.id}
+                  className={`border p-5 ${index === 0 ? "border-[#171717] bg-[#2f2f2d] text-white" : "border-[#d9d8d2] bg-[#fbfbfa]"}`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    {index === 0 ? <Trophy className="size-7" /> : <Medal className="size-7" />}
+                    <span className={`px-2.5 py-1 text-xs font-black ${index === 0 ? "bg-white text-[#171717]" : "border border-[#d9d8d2] bg-white text-[#55544f]"}`}>
+                      {user.badge}
+                    </span>
+                  </div>
+                  <div className="mt-6 flex items-center gap-4">
+                    <div className={`flex size-14 items-center justify-center rounded-full text-lg font-black ${index === 0 ? "bg-white text-[#171717]" : "bg-[#2f2f2d] text-white"}`}>
+                      {user.fullName.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-black">{user.fullName}</h2>
+                      <p className={`text-sm font-semibold ${index === 0 ? "text-white/65" : "text-[#77766f]"}`}>{user.username}</p>
+                    </div>
+                  </div>
+                  <div className="mt-6 grid grid-cols-3 gap-3 border-t border-current/20 pt-5">
+                    <Metric value={user.points.toLocaleString()} label="points" />
+                    <Metric value={user.projects} label="projects" />
+                    <Metric value={user.contributions} label="helps" />
+                  </div>
+                  {user.skills.length > 0 && (
+                    <div className="mt-5 flex flex-wrap gap-2">
+                      {user.skills.map((skill) => (
+                        <span key={skill} className={`border px-2.5 py-1 text-xs font-black ${index === 0 ? "border-white/30 text-white/80" : "border-[#d9d8d2] text-[#55544f]"}`}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
             </div>
-          ))}
-        </div>
+
+            {leaderboard.length > 0 && (
+              <div className="mt-8 border-y border-[#d9d8d2] bg-[#fbfbfa] px-6 py-12 sm:px-10 lg:px-20 xl:px-28 -mx-6 sm:-mx-10 lg:-mx-20 xl:-mx-28">
+                <div className="grid gap-3">
+                  {leaderboard.map((user) => (
+                    <div key={user.id} className="grid gap-4 border border-[#d9d8d2] bg-white p-4 sm:grid-cols-[60px_1fr_auto] sm:items-center">
+                      <span className="text-2xl font-black text-[#77766f]">#{user.rank}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
+                          {user.fullName.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                        </div>
+                        <div>
+                          <h3 className="font-black">{user.fullName}</h3>
+                          <p className="text-sm font-semibold text-[#77766f]">{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-8 text-sm font-black">
+                        <span>{user.points.toLocaleString()} pts</span>
+                        <span>{user.projects} projects</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </section>
 
       <section className="px-6 py-16 sm:px-10 lg:px-20 xl:px-28">

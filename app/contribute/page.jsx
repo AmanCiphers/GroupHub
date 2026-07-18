@@ -1,3 +1,6 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -11,23 +14,61 @@ import {
   Palette,
   Sparkles,
 } from "lucide-react"
+import { apiFetch } from "@/lib/api"
 
 const contributionTypes = [
-  [Code, "Development", "Build features, fix bugs, and connect project architecture.", ["Frontend", "Backend", "Mobile", "DevOps"], 156],
-  [Palette, "Design", "Clarify flows, prototype screens, and shape product identity.", ["UI Design", "UX Research", "Branding"], 89],
-  [Megaphone, "Marketing", "Help projects find users through content and launch strategy.", ["Content", "Social", "SEO"], 67],
-  [BookOpen, "Documentation", "Turn rough projects into readable guides and onboarding.", ["Writing", "Tutorials", "API Docs"], 45],
-  [HeartHandshake, "Mentorship", "Review work, coach new builders, and raise team quality.", ["Code Review", "Career Advice", "Pairing"], 34],
-  [Bug, "Testing & QA", "Find issues, test flows, and make releases more reliable.", ["Manual QA", "Automation", "Bug Reports"], 52],
-]
-
-const featuredProjects = [
-  ["EduConnect Platform", "Open-source learning platform connecting students with tutors globally.", ["React Developer", "UX Designer"], "High"],
-  ["GreenTrack App", "Mobile app helping users track and reduce their carbon footprint.", ["iOS Developer", "Data Analyst"], "Medium"],
-  ["Community Health Hub", "Health resource platform for underserved communities.", ["Backend Developer", "Content Writer"], "High"],
+  [Code, "Development", "Build features, fix bugs, and connect project architecture.", ["Frontend", "Backend", "Mobile", "DevOps"]],
+  [Palette, "Design", "Clarify flows, prototype screens, and shape product identity.", ["UI Design", "UX Research", "Branding"]],
+  [Megaphone, "Marketing", "Help projects find users through content and launch strategy.", ["Content", "Social", "SEO"]],
+  [BookOpen, "Documentation", "Turn rough projects into readable guides and onboarding.", ["Writing", "Tutorials", "API Docs"]],
+  [HeartHandshake, "Mentorship", "Review work, coach new builders, and raise team quality.", ["Code Review", "Career Advice", "Pairing"]],
+  [Bug, "Testing & QA", "Find issues, test flows, and make releases more reliable.", ["Manual QA", "Automation", "Bug Reports"]],
 ]
 
 export default function ContributePage() {
+  const [categoryCounts, setCategoryCounts] = useState({})
+  const [featured, setFeatured] = useState([])
+
+  useEffect(() => {
+    apiFetch("/api/v1/projects?limit=50&status=recruiting")
+      .then((payload) => {
+        const projects = payload.data.projects || []
+        const counts = {}
+        projects.forEach((p) => {
+          const cat = p.category
+          const openRoles = (p.roles || []).filter((r) => r.status === "open" && r.slotsOpen > 0).length
+          counts[cat] = (counts[cat] || 0) + openRoles
+        })
+        setCategoryCounts(counts)
+
+        const withOpenRoles = projects
+          .filter((p) => (p.roles || []).some((r) => r.status === "open" && r.slotsOpen > 0))
+          .sort((a, b) => {
+            const aOpen = (a.roles || []).reduce((s, r) => s + (r.slotsOpen || 0), 0)
+            const bOpen = (b.roles || []).reduce((s, r) => s + (r.slotsOpen || 0), 0)
+            return bOpen - aOpen
+          })
+          .slice(0, 3)
+        setFeatured(withOpenRoles)
+      })
+      .catch(() => {})
+  }, [])
+
+  function totalOpenings(category) {
+    const catMap = {
+      Development: ["Technology", "Engineering"],
+      Design: ["Design"],
+      Marketing: ["Marketing"],
+      Documentation: ["Documentation", "Content"],
+      Mentorship: ["Education", "Mentorship"],
+      "Testing & QA": ["Testing", "QA"],
+    }
+    const keys = catMap[category] || [category]
+    let total = 0
+    keys.forEach((key) => { total += categoryCounts[key] || 0 })
+    return total || 0
+  }
+
   return (
     <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
       <section className="border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
@@ -77,27 +118,30 @@ export default function ContributePage() {
           </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {contributionTypes.map(([Icon, title, description, skills, openings]) => (
-            <article key={title} className="border border-[#d9d8d2] bg-white p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex size-11 items-center justify-center bg-[#2f2f2d] text-white">
-                  <Icon className="size-5" />
-                </div>
-                <span className="border border-[#d9d8d2] px-2.5 py-1 text-xs font-black text-[#55544f]">
-                  {openings} openings
-                </span>
-              </div>
-              <h3 className="mt-5 text-2xl font-black">{title}</h3>
-              <p className="mt-2 font-semibold leading-relaxed text-[#55544f]">{description}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {skills.map((skill) => (
-                  <span key={skill} className="border border-[#d9d8d2] px-2.5 py-1 text-xs font-black text-[#55544f]">
-                    {skill}
+          {contributionTypes.map(([Icon, title, description, skills]) => {
+            const openings = totalOpenings(title)
+            return (
+              <article key={title} className="border border-[#d9d8d2] bg-white p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex size-11 items-center justify-center bg-[#2f2f2d] text-white">
+                    <Icon className="size-5" />
+                  </div>
+                  <span className="border border-[#d9d8d2] px-2.5 py-1 text-xs font-black text-[#55544f]">
+                    {openings} {openings === 1 ? "opening" : "openings"}
                   </span>
-                ))}
-              </div>
-            </article>
-          ))}
+                </div>
+                <h3 className="mt-5 text-2xl font-black">{title}</h3>
+                <p className="mt-2 font-semibold leading-relaxed text-[#55544f]">{description}</p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {skills.map((skill) => (
+                    <span key={skill} className="border border-[#d9d8d2] px-2.5 py-1 text-xs font-black text-[#55544f]">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            )
+          })}
         </div>
       </section>
 
@@ -106,22 +150,36 @@ export default function ContributePage() {
           <h2 className="text-3xl font-black">Projects needing help now</h2>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          {featuredProjects.map(([title, description, needs, urgency]) => (
-            <article key={title} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
-              <span className={`px-2.5 py-1 text-xs font-black ${urgency === "High" ? "bg-[#171717] text-white" : "border border-[#171717]"}`}>
-                {urgency} priority
-              </span>
-              <h3 className="mt-5 text-2xl font-black">{title}</h3>
-              <p className="mt-2 font-semibold text-[#55544f]">{description}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {needs.map((need) => (
-                  <span key={need} className="border border-[#171717] bg-white px-3 py-1 text-sm font-black">
-                    {need}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
+          {featured.map((project) => {
+            const openRoles = (project.roles || []).filter((r) => r.status === "open" && r.slotsOpen > 0)
+            const totalOpen = openRoles.reduce((s, r) => s + r.slotsOpen, 0)
+            return (
+              <Link key={project.id} href={`/projects/${project.id}`} className="group border border-[#d9d8d2] bg-[#fbfbfa] p-5 block hover:border-[#171717] transition">
+                <span className="inline-block px-2.5 py-1 text-xs font-black bg-[#171717] text-white">
+                  {totalOpen} open {totalOpen === 1 ? "spot" : "spots"}
+                </span>
+                <h3 className="mt-5 text-2xl font-black group-hover:underline group-hover:underline-offset-4">{project.title}</h3>
+                <p className="mt-2 font-semibold text-[#55544f]">{project.description}</p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {openRoles.map((role) => (
+                    <span key={role.id} className="border border-[#171717] bg-white px-3 py-1 text-sm font-black">
+                      {role.title}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            )
+          })}
+          {featured.length === 0 && (
+            <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-6 text-center lg:col-span-3">
+              <p className="text-lg font-black">No projects recruiting right now.</p>
+              <p className="mt-2 font-semibold text-[#55544f]">Check back soon or browse all projects.</p>
+              <Link href="/find-projects" className="mt-4 inline-flex items-center gap-2 text-sm font-black underline underline-offset-4">
+                Browse all projects
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          )}
         </div>
       </section>
     </div>

@@ -14,11 +14,7 @@ const navLinks = [
   { href: "/find-projects", label: "Find Projects" },
 ]
 
-const devBanner = (
-  <div className="bg-black px-4 py-2.5 text-center text-[10px] lg:text-sm font-bold text-white shadow-lg">
-    ⚠️ This app is currently under development — most features may not work as expected. All displayed data is hypothetical/demo data. ⚠️
-  </div>
-)
+
 
 export function Navbar() {
   const pathname = usePathname()
@@ -27,8 +23,8 @@ export function Navbar() {
   if (isHome) {
     return (
       <div className="flex flex-col">
-        {devBanner}
-        <header className="absolute inset-x-0 top-10 z-[70]">
+  
+        <header className="absolute inset-x-0 top- z-[70]">
           <nav className="xl:grid xl:grid-cols-[1fr_29vw] xl:items-start">
             <div className="flex min-h-24 items-center justify-between bg-transparent px-6 sm:px-10 lg:px-20 xl:px-10 xl:pl-28">
               <Link
@@ -50,7 +46,7 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-lg font-medium text-white/78 transition-colors hover:text-white"
+                    className="text-md font-medium text-white/78 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -82,7 +78,6 @@ export function Navbar() {
 
   return (
     <div className="flex flex-col">
-      {devBanner}
       <header className="sticky top-0 z-[70] border-b border-white/15 bg-[#2f2f2d] text-white">
         <nav className="flex min-h-[72px] items-center justify-between px-6 sm:px-10 lg:px-20 xl:px-28">
           <Link href="/" className="flex h-14 w-20 items-center justify-start" aria-label="GroupHub home">
