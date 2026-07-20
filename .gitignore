@@ -16,6 +16,7 @@ node_modules
 .DS_Store
 
 
+# Documentation (reference only, not part of the app)
+docs/
+
 SESSION_CHECKPOINT.md
-DOCUMENTATION-grouphub.md
-SECURITY_AUDIT_REPORT.md
