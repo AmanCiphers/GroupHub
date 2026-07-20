@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -9,11 +9,13 @@ import {
   CheckCircle2,
   MessageSquare,
   Plus,
+  Save,
   Settings,
   Users,
-  X,
 } from "lucide-react"
-import { apiFetch, getAccessToken } from "@/lib/api"
+import { apiFetch, getStoredUser } from "@/lib/api"
+import PillInput from "@/components/PillInput"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const statusClass = {
   active: "bg-[#171717] text-white",
@@ -38,111 +40,60 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
-function PillInput({ values, onChange, placeholder, suggestions }) {
-  const [input, setInput] = useState("")
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const inputRef = useRef(null)
-  const wrapperRef = useRef(null)
-
-  const filtered = suggestions
-    ? suggestions.filter(
-        (s) =>
-          !values.some((v) => v.toLowerCase() === s.toLowerCase()) &&
-          s.toLowerCase().includes(input.toLowerCase())
-      )
-    : []
-
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
-  function addItems(raw) {
-    const items = raw
-      .split(/[,;]/)
-      .map((s) => s.trim())
-      .filter(Boolean)
-    if (!items.length) return
-    const existing = new Set(values.map((v) => v.toLowerCase()))
-    const newItems = items.filter((item) => !existing.has(item.toLowerCase()))
-    if (!newItems.length) return
-    onChange([...values, ...newItems])
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === "Enter" || e.key === ",") {
-      e.preventDefault()
-      if (input) addItems(input)
-      setInput("")
-      setShowSuggestions(false)
-    }
-    if (e.key === "Backspace" && !input && values.length) {
-      onChange(values.slice(0, -1))
-    }
-  }
-
-  function selectSuggestion(suggestion) {
-    onChange([...values, suggestion])
-    setInput("")
-    setShowSuggestions(false)
-    inputRef.current?.focus()
-  }
-
-  function remove(index) {
-    onChange(values.filter((_, i) => i !== index))
-  }
-
+function SkeletonProjectCard() {
   return (
-    <div ref={wrapperRef} className="relative">
-      <div
-        className="flex min-h-11 flex-wrap items-center gap-1.5 border border-[#d9d8d2] bg-white px-3 py-1.5 focus-within:border-[#171717] cursor-text"
-        onClick={() => inputRef.current?.focus()}
-      >
-        {values.map((value, index) => (
-          <span key={index} className="flex items-center gap-1 border border-[#171717] bg-white px-2 py-0.5 text-sm font-black">
-            {value}
-            <button type="button" onClick={() => remove(index)} className="hover:text-[#77766f]">
-              <X className="size-3" />
-            </button>
-          </span>
-        ))}
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={(e) => {
-            setInput(e.target.value)
-            setShowSuggestions(true)
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          onKeyDown={handleKeyDown}
-          onPaste={(e) => {
-            e.preventDefault()
-            const text = e.clipboardData.getData("text")
-            addItems(text)
-          }}
-          className="min-w-[120px] flex-1 border-0 bg-transparent px-0 py-1 font-semibold outline-none text-sm"
-          placeholder={values.length ? "" : placeholder}
-        />
-      </div>
-      {showSuggestions && filtered.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-10 mt-1 max-h-48 overflow-y-auto border border-[#d9d8d2] bg-white shadow-lg">
-          {filtered.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => selectSuggestion(s)}
-              className="w-full px-3 py-2 text-left text-sm font-semibold hover:bg-[#efeee8]"
-            >
-              {s}
-            </button>
-          ))}
+    <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
+      <Skeleton className="h-6 w-20 rounded-none" />
+      <Skeleton className="mt-4 h-7 w-3/4 rounded-none" />
+      <Skeleton className="mt-2 h-4 w-1/2 rounded-none" />
+      <div className="mt-5">
+        <div className="mb-2 flex justify-between">
+          <Skeleton className="h-3 w-16 rounded-none" />
+          <Skeleton className="h-3 w-10 rounded-none" />
         </div>
-      )}
+        <Skeleton className="h-2 w-full rounded-none" />
+      </div>
+    </div>
+  )
+}
+
+function SkeletonAppCard() {
+  return (
+    <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-4">
+      <div className="flex gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-full" />
+        <div className="flex-1">
+          <Skeleton className="h-4 w-32 rounded-none" />
+          <Skeleton className="mt-2 h-3 w-3/4 rounded-none" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SkeletonActivityItem() {
+  return (
+    <div className="flex gap-3">
+      <Skeleton className="size-9 shrink-0 rounded-none" />
+      <div className="flex-1">
+        <Skeleton className="h-4 w-28 rounded-none" />
+        <Skeleton className="mt-1 h-3 w-20 rounded-none" />
+      </div>
+    </div>
+  )
+}
+
+function SkeletonRecommendedCard() {
+  return (
+    <div className="border border-white/15 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <Skeleton className="h-5 w-3/4 rounded-none bg-white/20" />
+        <Skeleton className="h-5 w-10 shrink-0 rounded-none bg-white/20" />
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        <Skeleton className="h-4 w-16 rounded-none bg-white/20" />
+        <Skeleton className="h-4 w-14 rounded-none bg-white/20" />
+      </div>
     </div>
   )
 }
@@ -154,6 +105,12 @@ export default function DashboardPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+
+  const [userSkills, setUserSkills] = useState([])
+  const [skillsSaving, setSkillsSaving] = useState(false)
+  const [skillsSaved, setSkillsSaved] = useState(false)
+  const [recommendedProjects, setRecommendedProjects] = useState([])
+  const [recommendedLoading, setRecommendedLoading] = useState(true)
 
   const [rolePills, setRolePills] = useState([])
   const [skillPills, setSkillPills] = useState([])
@@ -177,13 +134,19 @@ export default function DashboardPage() {
     setError("")
 
     try {
-      const [dashboardPayload, applicationsPayload] = await Promise.all([
+      const [dashboardPayload, applicationsPayload, profilePayload] = await Promise.all([
         apiFetch("/api/v1/dashboard"),
         apiFetch("/api/v1/applications/me"),
+        apiFetch("/api/v1/users/me"),
       ])
 
       setDashboard(dashboardPayload.data.dashboard)
       setApplications(applicationsPayload.data.applications || [])
+      setUserSkills(profilePayload.data.user?.skills || [])
+
+      const recPayload = await apiFetch("/api/v1/matchmaking/projects?limit=4")
+      setRecommendedProjects(recPayload.data?.projects || [])
+      setRecommendedLoading(false)
     } catch (requestError) {
       setError(requestError.message)
 
@@ -196,7 +159,7 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (!getAccessToken()) {
+    if (!getStoredUser()) {
       router.push("/account")
       return
     }
@@ -264,6 +227,24 @@ export default function DashboardPage() {
       await loadDashboard()
     } catch (requestError) {
       setError(requestError.message)
+    }
+  }
+
+  const handleSaveSkills = async () => {
+    setSkillsSaving(true)
+    setError("")
+    setSkillsSaved(false)
+    try {
+      await apiFetch("/api/v1/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ skills: userSkills }),
+      })
+      setSkillsSaved(true)
+      setTimeout(() => setSkillsSaved(false), 3000)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setSkillsSaving(false)
     }
   }
 
@@ -342,31 +323,37 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <div className="grid gap-4">
-                {(dashboard?.ownedProjects || []).map((project) => (
-                  <Link key={project.id} href={`/projects/${project.id}/manage`} className="block border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2.5 py-1 text-xs font-black ${statusClass[project.status] || statusClass.recruiting}`}>
-                          {titleCase(project.status)}
-                        </span>
+                {loading ? (
+                  <>
+                    <SkeletonProjectCard />
+                    <SkeletonProjectCard />
+                  </>
+                ) : (dashboard?.ownedProjects || []).length > 0 ? (
+                  (dashboard?.ownedProjects || []).map((project) => (
+                    <Link key={project.id} href={`/projects/${project.id}/manage`} className="block border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`px-2.5 py-1 text-xs font-black ${statusClass[project.status] || statusClass.recruiting}`}>
+                            {titleCase(project.status)}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 text-2xl font-black">{project.title}</h3>
+                        <p className="mt-2 text-sm font-semibold text-[#55544f]">
+                          Next: {project.nextMilestone || "Define the next milestone"}
+                        </p>
                       </div>
-                      <h3 className="mt-3 text-2xl font-black">{project.title}</h3>
-                      <p className="mt-2 text-sm font-semibold text-[#55544f]">
-                        Next: {project.nextMilestone || "Define the next milestone"}
-                      </p>
-                    </div>
-                    <div className="mt-5">
-                      <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.12em] text-[#77766f]">
-                        <span>Progress</span>
-                        <span>{project.progressPercent}%</span>
+                      <div className="mt-5">
+                        <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.12em] text-[#77766f]">
+                          <span>Progress</span>
+                          <span>{project.progressPercent}%</span>
+                        </div>
+                        <div className="h-2 bg-[#e5e3dc]">
+                          <div className="h-full bg-[#171717]" style={{ width: `${project.progressPercent}%` }} />
+                        </div>
                       </div>
-                      <div className="h-2 bg-[#e5e3dc]">
-                        <div className="h-full bg-[#171717]" style={{ width: `${project.progressPercent}%` }} />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-                {!loading && (dashboard?.ownedProjects || []).length === 0 && (
+                    </Link>
+                  ))
+                ) : (
                   <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
                     <h3 className="text-xl font-black">No projects yet.</h3>
                     <p className="mt-2 font-semibold text-[#55544f]">
@@ -377,127 +364,147 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {(dashboard?.memberships || []).length > 0 && (
+            {loading || (dashboard?.memberships || []).length > 0 ? (
               <div>
                 <div className="mb-4 border-b border-[#d9d8d2] pb-4">
                   <h2 className="text-xl font-black">Joined</h2>
                 </div>
                 <div className="grid gap-4">
-                  {(dashboard?.memberships || []).map((membership) => (
-                    <Link key={membership.id} href={`/projects/${membership.projectId}/member`} className="block border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`px-2.5 py-1 text-xs font-black ${statusClass[membership.project?.status] || statusClass.recruiting}`}>
-                              {titleCase(membership.project?.status || "active")}
-                            </span>
-                            <span className="border border-[#d9d8d2] bg-white px-2.5 py-1 text-xs font-black text-[#55544f]">
-                              {membership.roleTitle}
-                            </span>
-                          </div>
-                          <h3 className="mt-3 text-2xl font-black">{membership.project?.title}</h3>
-                          {membership.project?.nextMilestone && (
-                            <p className="mt-2 text-sm font-semibold text-[#55544f]">
-                              Next: {membership.project.nextMilestone}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {membership.project?.progressPercent > 0 && (
-                        <div className="mt-5">
-                          <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.12em] text-[#77766f]">
-                            <span>Progress</span>
-                            <span>{membership.project.progressPercent}%</span>
-                          </div>
-                          <div className="h-2 bg-[#e5e3dc]">
-                            <div className="h-full bg-[#171717]" style={{ width: `${membership.project.progressPercent}%` }} />
+                  {loading ? (
+                    <>
+                      <SkeletonProjectCard />
+                      <SkeletonProjectCard />
+                    </>
+                  ) : (
+                    (dashboard?.memberships || []).map((membership) => (
+                      <Link key={membership.id} href={`/projects/${membership.projectId}/member`} className="block border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`px-2.5 py-1 text-xs font-black ${statusClass[membership.project?.status] || statusClass.recruiting}`}>
+                                {titleCase(membership.project?.status || "active")}
+                              </span>
+                              <span className="border border-[#d9d8d2] bg-white px-2.5 py-1 text-xs font-black text-[#55544f]">
+                                {membership.roleTitle}
+                              </span>
+                            </div>
+                            <h3 className="mt-3 text-2xl font-black">{membership.project?.title}</h3>
+                            {membership.project?.nextMilestone && (
+                              <p className="mt-2 text-sm font-semibold text-[#55544f]">
+                                Next: {membership.project.nextMilestone}
+                              </p>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </Link>
-                  ))}
+                        {membership.project?.progressPercent > 0 && (
+                          <div className="mt-5">
+                            <div className="mb-2 flex justify-between text-xs font-black uppercase tracking-[0.12em] text-[#77766f]">
+                              <span>Progress</span>
+                              <span>{membership.project.progressPercent}%</span>
+                            </div>
+                            <div className="h-2 bg-[#e5e3dc]">
+                              <div className="h-full bg-[#171717]" style={{ width: `${membership.project.progressPercent}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </Link>
+                    ))
+                  )}
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {(dashboard?.incomingApplications || []).length > 0 && (
+            {loading || (dashboard?.incomingApplications || []).length > 0 ? (
               <div>
                 <div className="mb-4 flex items-center justify-between border-b border-[#d9d8d2] pb-4">
                   <h2 className="text-xl font-black">Incoming Applications</h2>
                   <span className="text-sm font-black uppercase tracking-[0.12em] text-[#77766f]">
-                    {(dashboard?.incomingApplications || []).filter((a) => a.status === "pending").length} pending
+                    {loading ? <Skeleton className="inline-block h-4 w-16 rounded-none" /> : `${(dashboard?.incomingApplications || []).filter((a) => a.status === "pending").length} pending`}
                   </span>
                 </div>
                 <div className="grid gap-3">
-                  {(dashboard?.incomingApplications || []).map((app) => (
-                    <div key={app.id} className="border border-[#d9d8d2] bg-[#fbfbfa] p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                            {app.applicant?.fullName?.split(" ").map((n) => n[0]).join("").slice(0, 2) || "?"}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-black">{app.applicant?.fullName || "Unknown"}</h3>
-                              <span className={`px-2 py-0.5 text-xs font-black ${statusClass[app.status] || statusClass.pending}`}>
-                                {titleCase(app.status)}
-                              </span>
+                  {loading ? (
+                    <>
+                      <SkeletonAppCard />
+                      <SkeletonAppCard />
+                    </>
+                  ) : (
+                    (dashboard?.incomingApplications || []).map((app) => (
+                      <div key={app.id} className="border border-[#d9d8d2] bg-[#fbfbfa] p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex items-start gap-3">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
+                              {app.applicant?.fullName?.split(" ").map((n) => n[0]).join("").slice(0, 2) || "?"}
                             </div>
-                            <p className="text-sm font-semibold text-[#77766f]">
-                              Applied to <span className="text-[#171717]">{app.role?.title}</span> on {app.project?.title}
-                            </p>
-                            <p className="mt-2 text-sm font-semibold">{app.message}</p>
-                            {app.applicant?.skills?.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {app.applicant.skills.map((skill) => (
-                                  <span key={skill} className="border border-[#d9d8d2] px-2 py-0.5 text-xs font-bold text-[#55544f]">{skill}</span>
-                                ))}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-black">{app.applicant?.fullName || "Unknown"}</h3>
+                                <span className={`px-2 py-0.5 text-xs font-black ${statusClass[app.status] || statusClass.pending}`}>
+                                  {titleCase(app.status)}
+                                </span>
                               </div>
-                            )}
+                              <p className="text-sm font-semibold text-[#77766f]">
+                                Applied to <span className="text-[#171717]">{app.role?.title}</span> on {app.project?.title}
+                              </p>
+                              <p className="mt-2 text-sm font-semibold">{app.message}</p>
+                              {app.applicant?.skills?.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                  {app.applicant.skills.map((skill) => (
+                                    <span key={skill} className="border border-[#d9d8d2] px-2 py-0.5 text-xs font-bold text-[#55544f]">{skill}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
+                          {app.status === "pending" && (
+                            <div className="flex gap-2 sm:flex-col">
+                              <button
+                                onClick={() => handleReviewApplication(app.id, "accepted")}
+                                className="h-9 px-4 bg-[#171717] text-white text-xs font-black hover:bg-[#2f2f2d]"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                onClick={() => handleReviewApplication(app.id, "rejected")}
+                                className="h-9 px-4 border border-[#171717] text-xs font-black hover:bg-[#efeee8]"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        {app.status === "pending" && (
-                          <div className="flex gap-2 sm:flex-col">
-                            <button
-                              onClick={() => handleReviewApplication(app.id, "accepted")}
-                              className="h-9 px-4 bg-[#171717] text-white text-xs font-black hover:bg-[#2f2f2d]"
-                            >
-                              Accept
-                            </button>
-                            <button
-                              onClick={() => handleReviewApplication(app.id, "rejected")}
-                              className="h-9 px-4 border border-[#171717] text-xs font-black hover:bg-[#efeee8]"
-                            >
-                              Reject
-                            </button>
-                          </div>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div>
               <div className="mb-4 border-b border-[#d9d8d2] pb-4">
                 <h2 className="text-xl font-black">My Applications</h2>
               </div>
               <div className="grid gap-3">
-                {applications.map((app) => (
-                  <div key={app.id} className="flex flex-col gap-3 border border-[#d9d8d2] bg-[#fbfbfa] p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="font-black">{app.project?.title || "Project application"}</h3>
-                      <p className="mt-1 text-sm font-semibold text-[#77766f]">
-                        Applied {formatDate(app.createdAt)}
-                      </p>
+                {loading ? (
+                  <>
+                    <SkeletonAppCard />
+                    <SkeletonAppCard />
+                  </>
+                ) : applications.length > 0 ? (
+                  applications.map((app) => (
+                    <div key={app.id} className="flex flex-col gap-3 border border-[#d9d8d2] bg-[#fbfbfa] p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <h3 className="font-black">{app.project?.title || "Project application"}</h3>
+                        <p className="mt-1 text-sm font-semibold text-[#77766f]">
+                          Applied {formatDate(app.createdAt)}
+                        </p>
+                      </div>
+                      <span className={`w-fit px-2.5 py-1 text-xs font-black ${statusClass[app.status] || statusClass.pending}`}>
+                        {titleCase(app.status)}
+                      </span>
                     </div>
-                    <span className={`w-fit px-2.5 py-1 text-xs font-black ${statusClass[app.status] || statusClass.pending}`}>
-                      {titleCase(app.status)}
-                    </span>
-                  </div>
-                ))}
-                {!loading && applications.length === 0 && (
+                  ))
+                ) : (
                   <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-4">
                     <p className="font-semibold text-[#55544f]">No applications yet.</p>
                   </div>
@@ -510,18 +517,26 @@ export default function DashboardPage() {
             <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
               <h2 className="text-xl font-black">Today&apos;s Activity</h2>
               <div className="mt-5 grid gap-4">
-                {(dashboard?.activity || []).map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <div className="flex size-9 shrink-0 items-center justify-center bg-[#2f2f2d] text-white">
-                      <MessageSquare className="size-4" />
+                {loading ? (
+                  <>
+                    <SkeletonActivityItem />
+                    <SkeletonActivityItem />
+                    <SkeletonActivityItem />
+                    <SkeletonActivityItem />
+                  </>
+                ) : (dashboard?.activity || []).length > 0 ? (
+                  (dashboard?.activity || []).map((item) => (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center bg-[#2f2f2d] text-white">
+                        <MessageSquare className="size-4" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold leading-snug">{titleCase(item.type.replaceAll("_", " "))}</p>
+                        <p className="mt-1 text-xs font-semibold text-[#77766f]">{formatDate(item.createdAt)}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold leading-snug">{titleCase(item.type.replaceAll("_", " "))}</p>
-                      <p className="mt-1 text-xs font-semibold text-[#77766f]">{formatDate(item.createdAt)}</p>
-                    </div>
-                  </div>
-                ))}
-                {!loading && (dashboard?.activity || []).length === 0 && (
+                  ))
+                ) : (
                   <p className="text-sm font-semibold text-[#55544f]">
                     Project updates will appear here.
                   </p>
@@ -530,14 +545,101 @@ export default function DashboardPage() {
             </div>
 
             <div className="border border-[#171717] bg-[#2f2f2d] p-5 text-white">
-              <p className="text-sm font-black uppercase tracking-[0.14em] text-white/65">
-                Recommended
-              </p>
-              <h2 className="mt-3 text-2xl font-black">AI project matching is ready for v2.</h2>
-              <Link href="/find-projects" className="mt-6 inline-flex items-center gap-2 text-sm font-black underline underline-offset-4">
-                Review projects
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-white/65">
+                  Recommended
+                </p>
+                {!recommendedLoading && recommendedProjects.length > 0 && (
+                  <span className="text-xs font-black text-white/50">{recommendedProjects.length} projects</span>
+                )}
+              </div>
+              {recommendedLoading ? (
+                <div className="mt-4 grid gap-3">
+                  <SkeletonRecommendedCard />
+                  <SkeletonRecommendedCard />
+                </div>
+              ) : recommendedProjects.length > 0 ? (
+                <div className="mt-4 grid gap-3">
+                  {recommendedProjects.map((project) => (
+                    <Link
+                      key={project.id}
+                      href={`/projects/${project.id}`}
+                      className="block border border-white/15 p-3 transition hover:border-white/40"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base font-black leading-tight">{project.title}</h3>
+                        <span className="shrink-0 rounded bg-white/10 px-2 py-0.5 text-xs font-black text-white/80">
+                          {project.matchScore}%
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        <span className="border border-white/15 px-1.5 py-0.5 text-xs font-bold text-white/60">
+                          {project.category}
+                        </span>
+                        <span className="border border-white/15 px-1.5 py-0.5 text-xs font-bold text-white/60">
+                          {project.stage}
+                        </span>
+                      </div>
+                      {project.openRoles > 0 && (
+                        <p className="mt-2 text-xs font-semibold text-white/50">
+                          {project.openRoles} open role{project.openRoles > 1 ? "s" : ""}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <h2 className="text-lg font-black">No matches yet.</h2>
+                  <p className="mt-2 text-sm font-semibold text-white/60">
+                    Add skills above to get project recommendations.
+                  </p>
+                </div>
+              )}
+              <Link href="/find-projects" className="mt-4 inline-flex items-center gap-2 text-sm font-black underline underline-offset-4 text-white/80 hover:text-white">
+                Browse all projects
                 <ArrowUpRight className="size-4" />
               </Link>
+            </div>
+
+            <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-[#77766f]">
+                  Your Skills
+                </p>
+                {skillsSaved && (
+                  <span className="text-xs font-black text-[#55544f]">Saved</span>
+                )}
+              </div>
+              {loading ? (
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-11 w-full rounded-none" />
+                  <Skeleton className="h-3 w-48 rounded-none" />
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4">
+                    <PillInput
+                      values={userSkills}
+                      onChange={setUserSkills}
+                      placeholder="Type a skill and press Enter"
+                    />
+                    <p className="mt-1 text-xs font-semibold text-[#77766f]">
+                      Used for project matchmaking
+                    </p>
+                  </div>
+                  {userSkills.length > 0 && (
+                    <button
+                      onClick={handleSaveSkills}
+                      disabled={skillsSaving}
+                      className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 border border-[#171717] bg-[#171717] text-sm font-black text-white hover:bg-[#2f2f2d] disabled:opacity-60"
+                    >
+                      <Save className="size-3.5" />
+                      {skillsSaving ? "Saving..." : "Save Skills"}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </aside>
         </div>

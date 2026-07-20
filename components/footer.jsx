@@ -80,7 +80,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-white/15 pt-8">
           <p className="text-sm font-semibold text-white/50">
-            {new Date().getFullYear()} GroupHub — A <span className="font-bold underline"><a target="_blank" href="https://cloverforge.vercel.app/">CloverForge</a></span> product. All rights reserved.
+            {new Date().getFullYear()} GroupHub — A <span className="font-bold underline"><a target="_blank" rel="noopener noreferrer" href="https://cloverforge.vercel.app/">CloverForge</a></span> product. All rights reserved.
           </p>
         </div>
       </div>

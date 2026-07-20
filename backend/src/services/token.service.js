@@ -67,16 +67,78 @@ function clearRefreshCookie(res) {
   })
 }
 
+function accessExpiryDate() {
+  const match = /^(\d+)([dhm])$/.exec(env.JWT_ACCESS_EXPIRES_IN)
+  const amount = match ? Number(match[1]) : 15
+  const unit = match ? match[2] : "m"
+  const multipliers = {
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  }
+
+  return new Date(Date.now() + amount * multipliers[unit])
+}
+
+function setAccessTokenCookie(res, token) {
+  res.cookie("accessToken", token, {
+    httpOnly: true,
+    signed: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    expires: accessExpiryDate(),
+    path: "/api/v1",
+  })
+}
+
+function clearAccessTokenCookie(res) {
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    signed: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    path: "/api/v1",
+  })
+}
+
+function getSignedAccessToken(req) {
+  return req.signedCookies?.accessToken || ""
+}
+
+function signEmailVerificationToken(userId) {
+  return jwt.sign(
+    { type: "email-verify" },
+    env.JWT_ACCESS_SECRET,
+    {
+      subject: userId,
+      expiresIn: "24h",
+    }
+  )
+}
+
+function verifyEmailVerificationToken(token) {
+  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] })
+  if (payload.type !== "email-verify") {
+    throw new Error("Invalid token type")
+  }
+  return payload.sub
+}
+
 function getSignedRefreshToken(req) {
   return req.signedCookies?.refreshToken || ""
 }
 
 const tokenService = {
+  clearAccessTokenCookie,
   clearRefreshCookie,
   createRefreshToken,
+  getSignedAccessToken,
   getSignedRefreshToken,
+  setAccessTokenCookie,
   setRefreshCookie,
   signAccessToken,
+  signEmailVerificationToken,
+  verifyEmailVerificationToken,
 }
 
 module.exports = { tokenService }

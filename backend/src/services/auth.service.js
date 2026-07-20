@@ -3,6 +3,7 @@ const { env } = require("../config/env")
 const { refreshTokenRepository } = require("../repositories/refreshToken.repository")
 const { userRepository } = require("../repositories/user.repository")
 const { tokenService } = require("./token.service")
+const { emailService } = require("./email.service")
 const { ApiError } = require("../utils/ApiError")
 const { normalizeEmail } = require("../utils/normalize")
 const { sha256 } = require("../utils/crypto")
@@ -32,29 +33,37 @@ async function register(payload, req) {
   const email = normalizeEmail(payload.email)
   const existingUser = await userRepository.findByEmail(email)
 
-  if (existingUser) {
-    throw new ApiError(409, "An account with this email already exists")
+  if (!existingUser) {
+    const passwordHash = await bcrypt.hash(
+      payload.password,
+      env.BCRYPT_SALT_ROUNDS
+    )
+
+    const user = await userRepository.create({
+      email,
+      fullName: payload.fullName.trim(),
+      passwordHash,
+    })
+
+    const verificationToken = tokenService.signEmailVerificationToken(user.id)
+    emailService.sendVerificationEmail({ to: email, token: verificationToken })
+
+    const accessToken = tokenService.signAccessToken(user)
+    const refresh = await tokenService.createRefreshToken(user, req)
+
+    return {
+      accessToken,
+      refreshToken: refresh.token,
+      refreshExpiresAt: refresh.expiresAt,
+      user: toPublicUser(user),
+    }
   }
 
-  const passwordHash = await bcrypt.hash(
-    payload.password,
-    env.BCRYPT_SALT_ROUNDS
-  )
-
-  const user = await userRepository.create({
-    email,
-    fullName: payload.fullName.trim(),
-    passwordHash,
-  })
-
-  const accessToken = tokenService.signAccessToken(user)
-  const refresh = await tokenService.createRefreshToken(user, req)
-
   return {
-    accessToken,
-    refreshToken: refresh.token,
-    refreshExpiresAt: refresh.expiresAt,
-    user: toPublicUser(user),
+    accessToken: "",
+    refreshToken: "",
+    refreshExpiresAt: new Date(0),
+    user: null,
   }
 }
 
@@ -133,12 +142,39 @@ async function logout(refreshToken) {
   await refreshTokenRepository.revokeByHash(sha256(refreshToken))
 }
 
+async function verifyEmail(token) {
+  let userId
+  try {
+    userId = tokenService.verifyEmailVerificationToken(token)
+  } catch (err) {
+    throw new ApiError(400, err.message === "Invalid token type" ? "Invalid verification link" : "Verification link expired or invalid")
+  }
+
+  const user = await userRepository.findById(userId)
+
+  if (!user) {
+    throw new ApiError(400, "Invalid verification link")
+  }
+
+  if (user.emailVerified) {
+    return toPublicUser(user)
+  }
+
+  const updated = await userRepository.updateById(userId, {
+    emailVerified: true,
+    status: "active",
+  })
+
+  return toPublicUser(updated)
+}
+
 const authService = {
   login,
   logout,
   refresh,
   register,
   toPublicUser,
+  verifyEmail,
 }
 
 module.exports = { authService }

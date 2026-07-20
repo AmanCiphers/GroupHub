@@ -8,11 +8,10 @@ function serializeMembership(m) {
     roleTitle: m.roleTitle || m.roleId?.title || "",
     joinedAt: m.joinedAt,
     permissions: m.permissions,
-    user: m.userId
+        user: m.userId
       ? {
           id: String(m.userId._id || m.userId),
           fullName: m.userId.fullName,
-          email: m.userId.email,
           username: m.userId.username,
           bio: m.userId.bio,
           skills: m.userId.skills,

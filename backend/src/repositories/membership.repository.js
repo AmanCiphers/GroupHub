@@ -1,3 +1,4 @@
+const mongoose = require("mongoose")
 const { ProjectMembership } = require("../models/ProjectMembership")
 
 async function create(data) {
@@ -5,6 +6,7 @@ async function create(data) {
 }
 
 async function findActive(projectId, userId) {
+  if (!mongoose.Types.ObjectId.isValid(projectId) || !mongoose.Types.ObjectId.isValid(userId)) return null
   return ProjectMembership.findOne({ projectId, userId, status: "active" })
 }
 

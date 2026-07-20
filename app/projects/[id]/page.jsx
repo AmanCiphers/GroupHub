@@ -18,7 +18,7 @@ import {
   Target,
   Users,
 } from "lucide-react"
-import { apiFetch, getAccessToken, getStoredUser } from "@/lib/api"
+import { apiFetch, getStoredUser } from "@/lib/api"
 
 function formatStage(stage) {
   return stage
@@ -72,7 +72,7 @@ export default function ProjectDetailPage() {
   }, [loadProject])
 
   const toggleSave = async () => {
-    if (!getAccessToken()) {
+    if (!getStoredUser()) {
       setError("Sign in to save projects.")
       return
     }
@@ -88,7 +88,7 @@ export default function ProjectDetailPage() {
   }
 
   const openApply = (role) => {
-    if (!getAccessToken()) {
+    if (!getStoredUser()) {
       router.push("/account")
       return
     }

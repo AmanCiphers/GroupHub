@@ -2,8 +2,12 @@ const { z } = require("zod")
 
 const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters")
+  .min(10, "Password must be at least 10 characters")
   .max(128, "Password must be 128 characters or fewer")
+  .regex(/[A-Z]/, "Password must contain an uppercase letter")
+  .regex(/[a-z]/, "Password must contain a lowercase letter")
+  .regex(/[0-9]/, "Password must contain a digit")
+  .regex(/[^A-Za-z0-9]/, "Password must contain a special character")
 
 const registerSchema = z
   .object({

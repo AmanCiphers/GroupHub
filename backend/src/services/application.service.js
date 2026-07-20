@@ -88,72 +88,68 @@ async function listMyApplications(userId) {
 }
 
 async function updateApplication(applicationId, userId, status) {
-  const application = await applicationRepository.findById(applicationId)
-  if (!application) throw new ApiError(404, "Application not found")
-
-  const project = await projectRepository.findById(application.projectId)
-  if (!project) throw new ApiError(404, "Project not found")
-
-  const isApplicant = String(application.applicantId) === String(userId)
-  const isOwner = String(project.ownerId) === String(userId)
-
-  if (status === "withdrawn" && !isApplicant) {
-    throw new ApiError(403, "Only the applicant can withdraw this application")
+  const normalizedStatuses = ["accepted", "rejected", "withdrawn"]
+  if (!normalizedStatuses.includes(status)) {
+    throw new ApiError(400, "Invalid application status")
   }
 
-  if (["accepted", "rejected"].includes(status) && !isOwner) {
-    throw new ApiError(403, "Only the project owner can review this application")
-  }
+  const isWithdraw = status === "withdrawn"
+  const isReview = ["accepted", "rejected"].includes(status)
 
-  if (application.status !== "pending") {
-    throw new ApiError(400, "Only pending applications can be updated")
-  }
-
-  if (status === "accepted") {
-    const role = await roleRepository.findById(application.roleId)
-    if (!role || role.status !== "open") throw new ApiError(400, "Role is not open")
-    if (role.slotsFilled >= role.slotsTotal) throw new ApiError(400, "Role is already full")
-
-    await roleRepository.incrementFilled(role._id)
-    await membershipRepository.create({
-      projectId: project._id,
-      userId: application.applicantId,
-      roleId: role._id,
-      roleTitle: role.title,
+  if (isWithdraw) {
+    const result = await applicationRepository.withdrawAtomic(applicationId, userId)
+    if (!result) throw new ApiError(404, "Application not found or already processed")
+    await activityService.record({
+      actorId: userId,
+      projectId: result.projectId,
+      targetUserId: result.applicantId,
+      type: "application_withdrawn",
+      metadata: { projectTitle: result.projectId?.title || "" },
     })
+    return serializeApplication(result)
   }
 
-  const updated = await applicationRepository.updateById(applicationId, {
-    status,
-    reviewedBy: isOwner ? userId : undefined,
-    reviewedAt: isOwner ? new Date() : undefined,
-  })
+  if (isReview) {
+    const projectIds = await projectRepository.findOwnedIds(userId)
+    const result = await applicationRepository.reviewAtomic(applicationId, projectIds, status, userId)
+    if (!result) throw new ApiError(404, "Application not found or not reviewable")
 
-  await activityService.record({
-    actorId: userId,
-    projectId: project._id,
-    targetUserId: application.applicantId,
-    type:
-      status === "accepted"
-        ? "application_accepted"
-        : status === "rejected"
-          ? "application_rejected"
-          : "application_withdrawn",
-    metadata: { projectTitle: project.title },
-  })
+    if (status === "accepted") {
+      const role = await roleRepository.findById(result.roleId)
+      if (!role) throw new ApiError(400, "Role not found")
 
-  if (isOwner) {
+      const filled = await roleRepository.incrementFilledAtomic(result.roleId.toString(), role.slotsTotal)
+      if (!filled) throw new ApiError(400, "Role is already full")
+
+      await membershipRepository.create({
+        projectId: result.projectId,
+        userId: result.applicantId,
+        roleId: result.roleId,
+        roleTitle: role.title,
+      })
+    }
+
+    await activityService.record({
+      actorId: userId,
+      projectId: result.projectId,
+      targetUserId: result.applicantId,
+      type: `application_${status}`,
+      metadata: { projectTitle: result.projectId?.title || "" },
+    })
+
     await notificationService.notify({
-      userId: application.applicantId,
+      userId: result.applicantId,
       type: `application_${status}`,
       title: `Application ${status}`,
-      body: `Your application for ${project.title} was ${status}.`,
+      body: `Your application was ${status}.`,
       entityType: "application",
-      entityId: application._id,
+      entityId: result._id,
     })
+
+    return serializeApplication(result)
   }
 
-  return serializeApplication(updated)
+  throw new ApiError(400, "Invalid application status")
 }
 
 const applicationService = {

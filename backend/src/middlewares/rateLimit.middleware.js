@@ -11,4 +11,37 @@ const authRateLimiter = rateLimit({
   },
 })
 
-module.exports = { authRateLimiter }
+const apiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+})
+
+const publicRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many requests. Please try again later.",
+  },
+})
+
+const refreshRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many refresh attempts. Please try again later.",
+  },
+})
+
+module.exports = { apiRateLimiter, authRateLimiter, publicRateLimiter, refreshRateLimiter }

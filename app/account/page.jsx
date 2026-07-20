@@ -15,7 +15,9 @@ import {
   Save,
   User,
 } from "lucide-react"
-import { apiFetch, getAccessToken, getStoredUser, setAuthSession, clearAuthSession } from "@/lib/api"
+import { apiFetch, getStoredUser, setAuthSession, clearAuthSession } from "@/lib/api"
+import PillInput from "@/components/PillInput"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const profilePoints = [
   "Show your skills and availability",
@@ -38,15 +40,18 @@ export default function AccountPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [skillsPills, setSkillsPills] = useState([])
+  const [interestsPills, setInterestsPills] = useState([])
   const router = useRouter()
-
-  const token = typeof window !== "undefined" ? getAccessToken() : ""
 
   const loadProfile = useCallback(async () => {
     setProfileLoading(true)
     try {
       const payload = await apiFetch("/api/v1/users/me")
       setProfile(payload.data.user)
+      setSkillsPills(payload.data.user?.skills || [])
+      setInterestsPills(payload.data.user?.interests || [])
+      setAuthSession({ user: payload.data.user })
     } catch {
       clearAuthSession()
     } finally {
@@ -55,12 +60,12 @@ export default function AccountPage() {
   }, [])
 
   useEffect(() => {
-    if (token) {
+    if (getStoredUser()) {
       loadProfile()
     } else {
       setProfileLoading(false)
     }
-  }, [token, loadProfile])
+  }, [loadProfile])
 
   const handleAuth = async (event) => {
     event.preventDefault()
@@ -106,15 +111,13 @@ export default function AccountPage() {
     setSaved(false)
 
     const formData = new FormData(event.currentTarget)
-    const skills = String(formData.get("skills") || "").split(",").map((s) => s.trim()).filter(Boolean)
-    const interests = String(formData.get("interests") || "").split(",").map((s) => s.trim()).filter(Boolean)
 
     const body = {
       fullName: String(formData.get("fullName") || "").trim(),
       username: String(formData.get("username") || "").trim() || undefined,
       bio: String(formData.get("bio") || "").trim(),
-      skills: skills.length ? skills : undefined,
-      interests: interests.length ? interests : undefined,
+      skills: skillsPills.length ? skillsPills : undefined,
+      interests: interestsPills.length ? interestsPills : undefined,
       location: String(formData.get("location") || "").trim(),
       availabilityHoursPerWeek: Number(formData.get("availabilityHoursPerWeek") || 0),
       experienceLevel: formData.get("experienceLevel"),
@@ -147,11 +150,7 @@ export default function AccountPage() {
   }
 
   const handleSignOut = async () => {
-    try {
-      await apiFetch("/api/v1/auth/logout", { method: "POST" })
-    } catch {
-      // still clear local session
-    }
+    await apiFetch("/api/v1/auth/logout", { method: "POST" }).catch(() => {})
     clearAuthSession()
     setProfile(null)
     router.push("/")
@@ -163,13 +162,48 @@ export default function AccountPage() {
 
   if (profileLoading) {
     return (
-      <div className="min-h-screen bg-[#f7f7f3] text-[#171717] flex items-center justify-center">
-        <p className="text-lg font-black">Loading profile...</p>
+      <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
+        <section className="border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-10 sm:px-10 lg:px-20 xl:px-28">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-20 rounded-none" />
+            <Skeleton className="mt-1 h-10 w-48 rounded-none" />
+          </div>
+        </section>
+        <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+          <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+            <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+              <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-6 text-center">
+                <Skeleton className="mx-auto size-20 rounded-full" />
+                <Skeleton className="mx-auto mt-4 h-5 w-28 rounded-none" />
+                <Skeleton className="mx-auto mt-1 h-4 w-20 rounded-none" />
+                <Skeleton className="mt-6 h-10 w-full rounded-none" />
+              </div>
+            </aside>
+            <div className="space-y-8">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="border border-[#d9d8d2] bg-[#fbfbfa] p-6">
+                  <Skeleton className="h-4 w-24 rounded-none" />
+                  <div className="mt-4 grid gap-5 sm:grid-cols-2">
+                    <Skeleton className="h-11 w-full rounded-none" />
+                    <Skeleton className="h-11 w-full rounded-none" />
+                    <div className="sm:col-span-2">
+                      <Skeleton className="h-24 w-full rounded-none" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-4 pb-10">
+                <Skeleton className="h-11 w-36 rounded-none" />
+                <Skeleton className="h-11 w-40 rounded-none" />
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     )
   }
 
-  if (token && !profile) {
+  if (getStoredUser() && !profile) {
     return (
       <div className="min-h-screen bg-[#f7f7f3] text-[#171717] flex items-center justify-center">
         <div className="text-center">
@@ -260,13 +294,15 @@ export default function AccountPage() {
                   <div className="mt-4 grid gap-5 sm:grid-cols-2">
                     <div>
                       <label className="text-sm font-black">Skills</label>
-                      <input name="skills" defaultValue={(profile.skills || []).join(", ")} className="mt-2 h-11 w-full border border-[#d9d8d2] bg-white px-3 font-semibold outline-none focus:border-[#171717]" placeholder="React, TypeScript, UI/UX" />
-                      <p className="mt-1 text-xs font-semibold text-[#77766f]">Comma-separated</p>
+                      <div className="mt-2">
+                        <PillInput values={skillsPills} onChange={setSkillsPills} placeholder="Type a skill and press Enter" />
+                      </div>
                     </div>
                     <div>
                       <label className="text-sm font-black">Interests</label>
-                      <input name="interests" defaultValue={(profile.interests || []).join(", ")} className="mt-2 h-11 w-full border border-[#d9d8d2] bg-white px-3 font-semibold outline-none focus:border-[#171717]" placeholder="AI, Open Source, Design" />
-                      <p className="mt-1 text-xs font-semibold text-[#77766f]">Comma-separated</p>
+                      <div className="mt-2">
+                        <PillInput values={interestsPills} onChange={setInterestsPills} placeholder="Type an interest and press Enter" />
+                      </div>
                     </div>
                   </div>
                 </fieldset>

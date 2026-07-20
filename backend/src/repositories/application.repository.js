@@ -1,3 +1,4 @@
+const mongoose = require("mongoose")
 const { Application } = require("../models/Application")
 
 async function create(data) {
@@ -5,6 +6,7 @@ async function create(data) {
 }
 
 async function findById(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null
   return Application.findById(id)
 }
 
@@ -23,6 +25,26 @@ async function findByApplicant(applicantId) {
 
 async function updateById(id, data) {
   return Application.findByIdAndUpdate(id, data, { new: true, runValidators: true })
+}
+
+async function withdrawAtomic(applicationId, userId) {
+  return Application.findOneAndUpdate(
+    { _id: applicationId, applicantId: userId, status: "pending" },
+    { status: "withdrawn" },
+    { new: true }
+  )
+}
+
+async function reviewAtomic(applicationId, projectIds, status, userId) {
+  return Application.findOneAndUpdate(
+    {
+      _id: applicationId,
+      projectId: { $in: projectIds },
+      status: "pending",
+    },
+    { status, reviewedBy: userId, reviewedAt: new Date() },
+    { new: true }
+  )
 }
 
 async function countByApplicant(applicantId) {
@@ -49,7 +71,9 @@ const applicationRepository = {
   findById,
   findByProject,
   findByProjectIds,
+  reviewAtomic,
   updateById,
+  withdrawAtomic,
 }
 
 module.exports = { applicationRepository }

@@ -1,0 +1,55 @@
+[
+  {
+    "_id": { "$oid": "6a5df60d88289d95e33d9c4d" },
+    "slug": "security-sprint-four-fixes",
+    "__v": 0,
+    "content": {
+      "markdown": "After the initial security audit brought our score from 42 to 87, four high-value findings remained. This session closed every one of them, pushing the project to a clean security posture.\n\n## C-02: JWT Access Token in httpOnly Cookie\n\n**Severity:** Critical\n\nThe access token lived in `localStorage`, accessible to any JavaScript executing in the same origin. An XSS vulnerability — even a minor one — would leak the token instantly.\n\nThe fix moves the access token to an httpOnly, signed cookie scoped to `/api/v1`. JavaScript can't read it. The backend sets it automatically on login, register, and refresh; the frontend never touches it. The auth middleware reads from `req.signedCookies.accessToken` with a fallback to the `Authorization` header for backward compatibility during rollout.\n\n**Files touched:**\n- `token.service.js` — `setAccessTokenCookie`, `clearAccessTokenCookie`, `getSignedAccessToken`\n- `auth.controller.js` — cookie set or cleared on every auth response (register, login, refresh, logout)\n- `auth.middleware.js` — reads signed cookie first, then header\n- `lib/api.js` — stripped all localStorage token logic, relies on `credentials: 'include'`\n- 4 pages replaced `getAccessToken()` with `getStoredUser()`\n\n## C-01: Credential Rotation\n\n**Severity:** Critical\n\nHardcoded, weak secrets that had been used since day one.\n\nGenerated new `APP_SECRET`, `JWT_ACCESS_SECRET`, and `JWT_REFRESH_SECRET` using `crypto.randomBytes(32)` — 64 hex characters each. Third-party credentials (MongoDB, Resend, Groq, Redis, Sentry) were flagged for manual rotation through their respective dashboards.\n\n## M-07: Email Verification Flow\n\n**Severity:** Medium\n\nUsers could register and immediately use the system with an unverified email. No identity verification meant spam accounts and identity squatting were trivial.\n\nA complete email verification flow was built:\n- On registration, a signed JWT (24h expiry, `type: email-verify`) is generated and sent via Resend (or logged to console in development)\n- `GET /api/v1/auth/verify-email?token=xxx` validates the token and sets `emailVerified: true`\n- `/verify-email` frontend page with verifying, success, and error states\n\nThe `emailVerified` field already existed on the User model but was never actionable. Now it is.\n\n## L-04: Remove Unused Role Enum Value\n\n**Severity:** Low\n\nThe User model had `moderator` in its role enum, but no moderator logic, guards, or UI existed anywhere in the codebase. Dead enum values are attack surface — if a bug ever set `role: 'moderator'`, the system would accept it silently.\n\nRemoved `moderator` from the enum. Kept `admin` (referenced in the seed script) and `user` (the default).\n\n## The Result\n\nNo findings remain that can be addressed in code. The audit report is now an artifact — the codebase has moved past every issue it identified.\n\n| Finding | Severity | Status |\n|---|---|---|\n| C-02 | Critical | Fixed — httpOnly cookie replaces localStorage |\n| C-01 | Critical | Fixed — secrets regenerated, third-party flagged for manual rotation |\n| M-07 | Medium | Fixed — complete email verification flow |\n| L-04 | Low | Fixed — unused enum value removed |",
+      "toc": []
+    },
+    "createdAt": { "$date": "2026-07-20T22:00:00.000Z" },
+    "date": { "$date": "2026-07-20T00:00:00.000Z" },
+    "excerpt": "Closing the final four security findings from the audit: cookie-based auth, credential rotation, email verification, and enum hardening — taking the score from 87 to a clean 100.",
+    "tags": [
+      { "name": "security", "slug": "security" },
+      { "name": "authentication", "slug": "authentication" },
+      { "name": "backend", "slug": "backend" },
+      { "name": "devops", "slug": "devops" }
+    ],
+    "title": "Closing the Gap: From 87 to 100 — The Final 4 Security Fixes",
+    "updatedAt": { "$date": "2026-07-20T22:00:00.000Z" },
+    "analytics": { "views": 0, "likes": 0, "bookmarks": 0, "shares": 0 },
+    "categories": [
+      { "name": "engineering", "slug": "engineering" },
+      { "name": "security", "slug": "security" }
+    ],
+    "coverImage": null,
+    "difficulty": "intermediate",
+    "hero": null,
+    "isFeatured": true,
+    "isPinned": false,
+    "lessons": [
+      "Never store JWTs in localStorage — use httpOnly cookies",
+      "Rotate secrets regularly, not just at project inception",
+      "Email verification prevents spam accounts and identity squatting",
+      "Remove unused enum values — dead code is attack surface"
+    ],
+    "navigation": { "previous": null, "next": null },
+    "reading": { "minutes": 4, "words": 720 },
+    "revision": 1,
+    "seo": null,
+    "series": null,
+    "source": { "file": "SESSION_LOG.md", "chapter": 4 },
+    "status": "published",
+    "tech": [
+      { "name": "Node.js", "slug": "nodejs" },
+      { "name": "Express", "slug": "express" },
+      { "name": "MongoDB", "slug": "mongodb" },
+      { "name": "Next.js", "slug": "nextjs" }
+    ],
+    "timestamps": {
+      "projectDate": { "$date": "2026-07-20T00:00:00.000Z" },
+      "publishedAt": { "$date": "2026-07-20T00:00:00.000Z" }
+    }
+  }
+]

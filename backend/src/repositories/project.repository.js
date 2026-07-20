@@ -13,7 +13,10 @@ function buildProjectFilter(query = {}) {
   if (query.skill) filter.skills = query.skill
 
   if (query.q) {
-    filter.$text = { $search: query.q }
+    const sanitized = query.q.replace(/[^\w\s]/g, " ").trim().slice(0, 100)
+    if (sanitized) {
+      filter.$text = { $search: sanitized }
+    }
   }
 
   return filter
@@ -63,12 +66,18 @@ async function findOwned(ownerId, limit = 10) {
     .limit(limit)
 }
 
+async function findOwnedIds(ownerId) {
+  const projects = await Project.find({ ownerId }).select("_id").lean()
+  return projects.map((p) => String(p._id))
+}
+
 const projectRepository = {
   countOwnedActive,
   create,
   findById,
   findByIdOrSlug,
   findOwned,
+  findOwnedIds,
   list,
   updateById,
 }

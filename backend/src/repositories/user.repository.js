@@ -26,8 +26,23 @@ async function markLogin(userId) {
   )
 }
 
+function sanitizeData(data) {
+  if (typeof data !== "object" || data === null) return data
+  const sanitized = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (key.startsWith("$") || key === "__proto__" || key === "constructor" || key === "prototype") continue
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      sanitized[key] = sanitizeData(value)
+    } else {
+      sanitized[key] = value
+    }
+  }
+  return sanitized
+}
+
 async function updateById(userId, data) {
-  return User.findByIdAndUpdate(userId, data, {
+  const cleaned = sanitizeData(data)
+  return User.findByIdAndUpdate(userId, cleaned, {
     new: true,
     runValidators: true,
   })

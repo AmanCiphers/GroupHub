@@ -29,21 +29,14 @@ const ChartStyle = ({ id, config }) => {
     if (!colorConfig.length) {
         return null;
     }
-    return (<style dangerouslySetInnerHTML={{
-            __html: Object.entries(THEMES)
-                .map(([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-                .map(([key, itemConfig]) => {
-                const color = itemConfig.theme?.[theme] ||
-                    itemConfig.color;
-                return color ? `  --color-${key}: ${color};` : null;
-            })
-                .join('\n')}
-}
-`)
-                .join('\n'),
-        }}/>);
+    const cssVars = {};
+    colorConfig.forEach(([key, itemConfig]) => {
+        const color = itemConfig.theme?.light || itemConfig.color;
+        if (color) {
+            cssVars[`--color-${key}`] = color;
+        }
+    });
+    return <style>{`[data-chart=${id}] { ${Object.entries(cssVars).map(([k, v]) => `${k}: ${v};`).join(' ')} }`}</style>;
 };
 const ChartTooltip = RechartsPrimitive.Tooltip;
 function ChartTooltipContent({ active, payload, className, indicator = 'dot', hideLabel = false, hideIndicator = false, label, labelFormatter, labelClassName, formatter, color, nameKey, labelKey, }) {

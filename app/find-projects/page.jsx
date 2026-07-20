@@ -16,7 +16,8 @@ import {
   Sparkles,
   Users,
 } from "lucide-react"
-import { apiFetch, getAccessToken, toQueryString } from "@/lib/api"
+import { apiFetch, getStoredUser, toQueryString } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const fallbackCategories = [
   "All", "Technology", "Design", "Business", "Marketing", "Gaming", "Social Impact",
@@ -63,6 +64,7 @@ export default function FindProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [categories, setCategories] = useState(fallbackCategories)
+  const [scoreMap, setScoreMap] = useState({})
 
   useEffect(() => {
     apiFetch("/api/v1/metadata")
@@ -86,10 +88,20 @@ export default function FindProjectsPage() {
           category: selectedCategory,
           skill: selectedSkill,
         })
-        const payload = await apiFetch(`/api/v1/projects${query}`)
+        const [projectsPayload, matchPayload] = await Promise.all([
+          apiFetch(`/api/v1/projects${query}`),
+          getStoredUser()
+            ? apiFetch("/api/v1/matchmaking/projects?limit=50").catch(() => ({ data: { projects: [] } }))
+            : Promise.resolve({ data: { projects: [] } }),
+        ])
 
         if (!cancelled) {
-          setProjects(payload.data.projects || [])
+          setProjects(projectsPayload.data.projects || [])
+          const map = {}
+          ;(matchPayload.data?.projects || []).forEach((p) => {
+            map[p.id] = p.matchScore
+          })
+          setScoreMap(map)
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -111,7 +123,7 @@ export default function FindProjectsPage() {
   }, [searchQuery, selectedCategory, selectedSkill])
 
   const toggleSave = async (project) => {
-    if (!getAccessToken()) {
+    if (!getStoredUser()) {
       setError("Sign in to save projects.")
       return
     }
@@ -252,7 +264,7 @@ export default function FindProjectsPage() {
                   {loading ? "Loading projects" : `${projects.length} open projects`}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-[#55544f]">
-                  Sorted by recent activity. AI fit ranking comes later.
+                  Sorted by recent activity. AI fit score shown when signed in.
                 </p>
               </div>
               <Link
@@ -271,7 +283,55 @@ export default function FindProjectsPage() {
             )}
 
             <div className="grid gap-4">
-              {projects.map((project) => {
+              {loading ? (
+                <>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5 sm:p-6">
+                      <div className="grid gap-6 xl:grid-cols-[1fr_220px]">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Skeleton className="h-6 w-20 rounded-none" />
+                            <Skeleton className="h-6 w-16 rounded-none" />
+                            <Skeleton className="h-6 w-24 rounded-none" />
+                          </div>
+                          <div className="mt-4 flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <Skeleton className="h-8 w-3/4 rounded-none" />
+                              <Skeleton className="mt-3 h-4 w-full rounded-none" />
+                              <Skeleton className="mt-1 h-4 w-2/3 rounded-none" />
+                            </div>
+                            <Skeleton className="size-10 shrink-0 rounded-none" />
+                          </div>
+                          <div className="mt-5 grid gap-4 md:grid-cols-2">
+                            <div>
+                              <Skeleton className="h-3 w-20 rounded-none" />
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Skeleton className="h-8 w-28 rounded-none" />
+                                <Skeleton className="h-8 w-24 rounded-none" />
+                              </div>
+                            </div>
+                            <div>
+                              <Skeleton className="h-3 w-12 rounded-none" />
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Skeleton className="h-8 w-20 rounded-none" />
+                                <Skeleton className="h-8 w-16 rounded-none" />
+                                <Skeleton className="h-8 w-24 rounded-none" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="border-t border-[#d9d8d2] pt-5 xl:border-l xl:border-t-0 xl:pl-6 xl:pt-0">
+                          <Skeleton className="h-3 w-12 rounded-none" />
+                          <Skeleton className="mt-2 h-10 w-20 rounded-none" />
+                          <Skeleton className="mt-2 h-4 w-32 rounded-none" />
+                          <Skeleton className="mt-8 h-11 w-full rounded-none" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : projects.length > 0 ? (
+                projects.map((project) => {
                 const roleStats = getOpenRoleStats(project)
                 const roleNames = (project.roles || []).map((role) => role.title)
                 const isSaved = project.isSaved
@@ -368,15 +428,26 @@ export default function FindProjectsPage() {
                         <div>
                           <div className="flex items-center justify-between">
                             <p className="text-xs font-black uppercase tracking-[0.14em] text-[#77766f]">
-                              Match
+                              AI Fit
                             </p>
-                            <CheckCircle2 className="size-5 text-[#171717]" />
+                            {(scoreMap[project.id] !== undefined && getStoredUser()) ? (
+                              <div className={`h-2 w-12 ${scoreMap[project.id] >= 30 ? "bg-[#171717]" : "bg-[#d9d8d2]"}`}>
+                                <div
+                                  className="h-full bg-[#171717]"
+                                  style={{ width: `${Math.min(scoreMap[project.id], 100)}%` }}
+                                />
+                              </div>
+                            ) : (
+                              <Sparkles className="size-4 text-[#77766f]" />
+                            )}
                           </div>
                           <p className="mt-2 text-5xl font-black text-[#171717]">
-                            --
+                            {scoreMap[project.id] !== undefined ? `${Math.round(scoreMap[project.id])}%` : "--"}
                           </p>
                           <p className="mt-2 text-sm font-semibold text-[#55544f]">
-                            AI fit scoring is planned for v2.
+                            {scoreMap[project.id] !== undefined
+                              ? "Based on skills, interests & availability"
+                              : "Sign in to see your fit score"}
                           </p>
                         </div>
 
@@ -406,19 +477,18 @@ export default function FindProjectsPage() {
                     </div>
                   </article>
                 )
-              })}
+              })
+              ) : (
+                <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-10 text-center">
+                  <p className="text-xl font-black text-[#171717]">
+                    No projects found.
+                  </p>
+                  <p className="mt-2 font-semibold text-[#55544f]">
+                    Create one from the dashboard or try broader filters.
+                  </p>
+                </div>
+              )}
             </div>
-
-            {!loading && projects.length === 0 && (
-              <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-10 text-center">
-                <p className="text-xl font-black text-[#171717]">
-                  No projects found.
-                </p>
-                <p className="mt-2 font-semibold text-[#55544f]">
-                  Create one from the dashboard or try broader filters.
-                </p>
-              </div>
-            )}
           </div>
         </div>
       </section>

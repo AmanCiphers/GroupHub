@@ -27,10 +27,7 @@ function errorMiddleware(error, req, res, _next) {
     success: false,
     message: isServerError ? "Internal server error" : error.message,
     requestId: req.id,
-    details:
-      !isServerError || env.NODE_ENV !== "production"
-        ? error.details
-        : undefined,
+    details: env.NODE_ENV === "production" ? undefined : error.details,
   })
 }
 

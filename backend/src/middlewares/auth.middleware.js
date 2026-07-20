@@ -4,9 +4,17 @@ const { userRepository } = require("../repositories/user.repository")
 const { ApiError } = require("../utils/ApiError")
 const { asyncHandler } = require("../utils/asyncHandler")
 
-const authMiddleware = asyncHandler(async (req, _res, next) => {
+function extractToken(req) {
+  const cookieToken = req.signedCookies?.accessToken
+  if (cookieToken) return cookieToken
+
   const header = req.headers.authorization || ""
   const [, token] = header.split(" ")
+  return token || ""
+}
+
+const authMiddleware = asyncHandler(async (req, _res, next) => {
+  const token = extractToken(req)
 
   if (!token) {
     throw new ApiError(401, "Authentication required")
@@ -15,7 +23,7 @@ const authMiddleware = asyncHandler(async (req, _res, next) => {
   let payload
 
   try {
-    payload = jwt.verify(token, env.JWT_ACCESS_SECRET)
+    payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] })
   } catch (_error) {
     throw new ApiError(401, "Invalid or expired token")
   }
@@ -31,8 +39,7 @@ const authMiddleware = asyncHandler(async (req, _res, next) => {
 })
 
 const optionalAuthMiddleware = asyncHandler(async (req, _res, next) => {
-  const header = req.headers.authorization || ""
-  const [, token] = header.split(" ")
+  const token = extractToken(req)
 
   if (!token) {
     next()

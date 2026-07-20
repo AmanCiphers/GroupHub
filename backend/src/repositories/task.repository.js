@@ -1,3 +1,4 @@
+const mongoose = require("mongoose")
 const { Task } = require("../models/Task")
 
 async function create(data) {
@@ -5,6 +6,7 @@ async function create(data) {
 }
 
 async function findById(id) {
+  if (!mongoose.Types.ObjectId.isValid(id)) return null
   return Task.findById(id)
     .populate("assigneeId", "fullName email username")
     .populate("createdBy", "fullName")
