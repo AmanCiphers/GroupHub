@@ -41,7 +41,7 @@ function computeProjectScore(user, project) {
   const expFit = (experienceStageFit(user.experienceLevel || "beginner", project.stage || "idea") / 5) * 10
   const reputation = Math.min((user.reputationPoints || 0) / 100, 1) * 15
 
-  return Math.round((skills + interest + availability + expFit + reputation) * 10) / 10
+  return Math.round(skills + interest + availability + expFit + reputation)
 }
 
 function computeUserScore(project, user) {
@@ -51,7 +51,7 @@ function computeUserScore(project, user) {
   const expFit = (experienceStageFit(user.experienceLevel || "beginner", project.stage || "idea") / 5) * 10
   const reputation = Math.min((user.reputationPoints || 0) / 100, 1) * 15
 
-  return Math.round((skills + interest + availability + expFit + reputation) * 10) / 10
+  return Math.round(skills + interest + availability + expFit + reputation)
 }
 
 async function recommendProjects(userId, limit = 5) {
