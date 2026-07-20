@@ -47,22 +47,24 @@ async function createRefreshToken(user, req) {
 }
 
 function setRefreshCookie(res, token, expiresAt) {
+  const isProd = env.NODE_ENV === "production"
   res.cookie("refreshToken", token, {
     httpOnly: true,
     signed: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: true,
+    sameSite: isProd ? "none" : "lax",
     expires: expiresAt,
     path: "/api/v1/auth",
   })
 }
 
 function clearRefreshCookie(res) {
+  const isProd = env.NODE_ENV === "production"
   res.clearCookie("refreshToken", {
     httpOnly: true,
     signed: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: true,
+    sameSite: isProd ? "none" : "lax",
     path: "/api/v1/auth",
   })
 }
@@ -81,22 +83,24 @@ function accessExpiryDate() {
 }
 
 function setAccessTokenCookie(res, token) {
+  const isProd = env.NODE_ENV === "production"
   res.cookie("accessToken", token, {
     httpOnly: true,
     signed: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: true,
+    sameSite: isProd ? "none" : "lax",
     expires: accessExpiryDate(),
     path: "/api/v1",
   })
 }
 
 function clearAccessTokenCookie(res) {
+  const isProd = env.NODE_ENV === "production"
   res.clearCookie("accessToken", {
     httpOnly: true,
     signed: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
+    secure: true,
+    sameSite: isProd ? "none" : "lax",
     path: "/api/v1",
   })
 }

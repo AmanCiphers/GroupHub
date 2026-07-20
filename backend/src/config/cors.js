@@ -1,7 +1,10 @@
 const cors = require("cors")
 const { env } = require("./env")
 
-const allowedOrigins = env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+const allowedOrigins = [
+  ...env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
+  env.CLIENT_URL,
+].filter(Boolean)
 
 const corsMiddleware = cors({
   origin(origin, callback) {
@@ -16,6 +19,11 @@ const corsMiddleware = cors({
     }
 
     if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+
+    if (/^https:\/\/.*\.vercel\.app$/.test(origin)) {
       callback(null, true)
       return
     }
