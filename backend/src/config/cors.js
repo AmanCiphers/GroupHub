@@ -17,12 +17,23 @@ function getRootDomain(url) {
   }
 }
 
-const allowedOrigins = [
+const rawOrigins = [
   ...env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
   env.CLIENT_URL,
 ].filter(Boolean)
 
-const clientRootDomain = getRootDomain(env.CLIENT_URL)
+const allowedOrigins = []
+const rootDomains = []
+
+for (const origin of rawOrigins) {
+  allowedOrigins.push(origin)
+  const root = getRootDomain(origin)
+  if (root && !rootDomains.includes(root)) {
+    rootDomains.push(root)
+  }
+}
+
+const hasExplicitOrigins = allowedOrigins.length > 0
 
 const corsMiddleware = cors({
   origin(origin, callback) {
@@ -46,7 +57,12 @@ const corsMiddleware = cors({
       return
     }
 
-    if (clientRootDomain && origin.endsWith(clientRootDomain)) {
+    if (rootDomains.some((domain) => origin.endsWith(domain))) {
+      callback(null, true)
+      return
+    }
+
+    if (!hasExplicitOrigins) {
       callback(null, true)
       return
     }
