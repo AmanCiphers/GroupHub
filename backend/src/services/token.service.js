@@ -3,6 +3,23 @@ const { env } = require("../config/env")
 const { refreshTokenRepository } = require("../repositories/refreshToken.repository")
 const { createOpaqueToken, sha256 } = require("../utils/crypto")
 
+function isCrossOriginRequest(req) {
+  const origin = req?.headers?.origin || ""
+  const host = req?.headers?.host || ""
+
+  if (!origin || !host) {
+    return false
+  }
+
+  try {
+    const originHost = new URL(origin).hostname
+    const localHost = host.split(":")[0]
+    return originHost !== localHost
+  } catch {
+    return false
+  }
+}
+
 function signAccessToken(user) {
   return jwt.sign(
     {
@@ -46,25 +63,33 @@ async function createRefreshToken(user, req) {
   return { expiresAt, token }
 }
 
-function setRefreshCookie(res, token, expiresAt) {
-  const isProd = env.NODE_ENV === "production"
+function cookieOptions(req) {
+  const co = isCrossOriginRequest(req)
+  return {
+    secure: co,
+    sameSite: co ? "none" : "lax",
+  }
+}
+
+function setRefreshCookie(res, token, expiresAt, req) {
+  const { secure, sameSite } = cookieOptions(req)
   res.cookie("refreshToken", token, {
     httpOnly: true,
     signed: true,
-    secure: true,
-    sameSite: isProd ? "none" : "lax",
+    secure,
+    sameSite,
     expires: expiresAt,
     path: "/api/v1/auth",
   })
 }
 
-function clearRefreshCookie(res) {
-  const isProd = env.NODE_ENV === "production"
+function clearRefreshCookie(res, req) {
+  const { secure, sameSite } = cookieOptions(req)
   res.clearCookie("refreshToken", {
     httpOnly: true,
     signed: true,
-    secure: true,
-    sameSite: isProd ? "none" : "lax",
+    secure,
+    sameSite,
     path: "/api/v1/auth",
   })
 }
@@ -82,25 +107,25 @@ function accessExpiryDate() {
   return new Date(Date.now() + amount * multipliers[unit])
 }
 
-function setAccessTokenCookie(res, token) {
-  const isProd = env.NODE_ENV === "production"
+function setAccessTokenCookie(res, token, req) {
+  const { secure, sameSite } = cookieOptions(req)
   res.cookie("accessToken", token, {
     httpOnly: true,
     signed: true,
-    secure: true,
-    sameSite: isProd ? "none" : "lax",
+    secure,
+    sameSite,
     expires: accessExpiryDate(),
     path: "/api/v1",
   })
 }
 
-function clearAccessTokenCookie(res) {
-  const isProd = env.NODE_ENV === "production"
+function clearAccessTokenCookie(res, req) {
+  const { secure, sameSite } = cookieOptions(req)
   res.clearCookie("accessToken", {
     httpOnly: true,
     signed: true,
-    secure: true,
-    sameSite: isProd ? "none" : "lax",
+    secure,
+    sameSite,
     path: "/api/v1",
   })
 }

@@ -7,12 +7,8 @@ const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.validated.body, req)
 
   if (result.user) {
-    tokenService.setRefreshCookie(
-      res,
-      result.refreshToken,
-      result.refreshExpiresAt
-    )
-    tokenService.setAccessTokenCookie(res, result.accessToken)
+    tokenService.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt, req)
+    tokenService.setAccessTokenCookie(res, result.accessToken, req)
 
     apiResponse(
       res,
@@ -31,12 +27,8 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const result = await authService.login(req.validated.body, req)
 
-  tokenService.setRefreshCookie(
-    res,
-    result.refreshToken,
-    result.refreshExpiresAt
-  )
-  tokenService.setAccessTokenCookie(res, result.accessToken)
+  tokenService.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt, req)
+  tokenService.setAccessTokenCookie(res, result.accessToken, req)
 
   apiResponse(
     res,
@@ -52,12 +44,8 @@ const refresh = asyncHandler(async (req, res) => {
   const currentRefreshToken = tokenService.getSignedRefreshToken(req)
   const result = await authService.refresh(currentRefreshToken, req)
 
-  tokenService.setRefreshCookie(
-    res,
-    result.refreshToken,
-    result.refreshExpiresAt
-  )
-  tokenService.setAccessTokenCookie(res, result.accessToken)
+  tokenService.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt, req)
+  tokenService.setAccessTokenCookie(res, result.accessToken, req)
 
   apiResponse(
     res,
@@ -72,8 +60,8 @@ const refresh = asyncHandler(async (req, res) => {
 const logout = asyncHandler(async (req, res) => {
   const currentRefreshToken = tokenService.getSignedRefreshToken(req)
   await authService.logout(currentRefreshToken)
-  tokenService.clearRefreshCookie(res)
-  tokenService.clearAccessTokenCookie(res)
+  tokenService.clearRefreshCookie(res, req)
+  tokenService.clearAccessTokenCookie(res, req)
   apiResponse(res, 200, null, "Signed out")
 })
 
