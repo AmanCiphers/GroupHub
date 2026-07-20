@@ -27,7 +27,7 @@ app.use(cookieParser(env.APP_SECRET))
 app.use(mongoSanitize())
 
 app.use((req, res, next) => {
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+  if (env.CLIENT_URL && ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     const origin = req.headers.origin
     const referer = req.headers.referer
 
