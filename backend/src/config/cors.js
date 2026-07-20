@@ -20,6 +20,8 @@ function getRootDomain(url) {
 const rawOrigins = [
   ...env.CORS_ORIGIN.split(",").map((origin) => origin.trim()),
   env.CLIENT_URL,
+  "http://localhost:3000",
+  "https://grouphub.thecloverforge.com",
 ].filter(Boolean)
 
 const allowedOrigins = []
