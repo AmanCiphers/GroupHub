@@ -1,23 +1,83 @@
 [
   {
-    "_id": { "$oid": "6a5df60d88289d95e33d9c4d" },
-    "slug": "security-sprint-four-fixes",
+    "_id": { "$oid": "6a5e086088289d95e33d9c4f" },
+    "slug": "deploying-cross-origin-auth",
     "__v": 0,
     "content": {
-      "markdown": "After the initial security audit brought our score from 42 to 87, four high-value findings remained. This session closed every one of them, pushing the project to a clean security posture.\n\n## C-02: JWT Access Token in httpOnly Cookie\n\n**Severity:** Critical\n\nThe access token lived in `localStorage`, accessible to any JavaScript executing in the same origin. An XSS vulnerability — even a minor one — would leak the token instantly.\n\nThe fix moves the access token to an httpOnly, signed cookie scoped to `/api/v1`. JavaScript can't read it. The backend sets it automatically on login, register, and refresh; the frontend never touches it. The auth middleware reads from `req.signedCookies.accessToken` with a fallback to the `Authorization` header for backward compatibility during rollout.\n\n**Files touched:**\n- `token.service.js` — `setAccessTokenCookie`, `clearAccessTokenCookie`, `getSignedAccessToken`\n- `auth.controller.js` — cookie set or cleared on every auth response (register, login, refresh, logout)\n- `auth.middleware.js` — reads signed cookie first, then header\n- `lib/api.js` — stripped all localStorage token logic, relies on `credentials: 'include'`\n- 4 pages replaced `getAccessToken()` with `getStoredUser()`\n\n## C-01: Credential Rotation\n\n**Severity:** Critical\n\nHardcoded, weak secrets that had been used since day one.\n\nGenerated new `APP_SECRET`, `JWT_ACCESS_SECRET`, and `JWT_REFRESH_SECRET` using `crypto.randomBytes(32)` — 64 hex characters each. Third-party credentials (MongoDB, Resend, Groq, Redis, Sentry) were flagged for manual rotation through their respective dashboards.\n\n## M-07: Email Verification Flow\n\n**Severity:** Medium\n\nUsers could register and immediately use the system with an unverified email. No identity verification meant spam accounts and identity squatting were trivial.\n\nA complete email verification flow was built:\n- On registration, a signed JWT (24h expiry, `type: email-verify`) is generated and sent via Resend (or logged to console in development)\n- `GET /api/v1/auth/verify-email?token=xxx` validates the token and sets `emailVerified: true`\n- `/verify-email` frontend page with verifying, success, and error states\n\nThe `emailVerified` field already existed on the User model but was never actionable. Now it is.\n\n## L-04: Remove Unused Role Enum Value\n\n**Severity:** Low\n\nThe User model had `moderator` in its role enum, but no moderator logic, guards, or UI existed anywhere in the codebase. Dead enum values are attack surface — if a bug ever set `role: 'moderator'`, the system would accept it silently.\n\nRemoved `moderator` from the enum. Kept `admin` (referenced in the seed script) and `user` (the default).\n\n## The Result\n\nNo findings remain that can be addressed in code. The audit report is now an artifact — the codebase has moved past every issue it identified.\n\n| Finding | Severity | Status |\n|---|---|---|\n| C-02 | Critical | Fixed — httpOnly cookie replaces localStorage |\n| C-01 | Critical | Fixed — secrets regenerated, third-party flagged for manual rotation |\n| M-07 | Medium | Fixed — complete email verification flow |\n| L-04 | Low | Fixed — unused enum value removed |",
+      "markdown": "After weeks of development, deployment day arrived. What should have been a simple `git push` turned into a deep dive into cross-origin authentication, cookie security models, and the subtle ways browsers enforce the Same-Origin Policy.\n\n## The Architecture\n\nThe app is split across two hosts:\n\n- **Frontend:** Next.js on Vercel (`grouphub.thecloverforge.com`)\n- **Backend:** Express API on Render (`grouphub-86xd.onrender.com`)\n\nThey're on different domains, which means every authenticated request runs a gauntlet of security checks: CORS, CSRF, and cookie same-site enforcement.\n\n## Round One: CORS\n\nThe first deploy failed immediately. The browser refused every API call:\n\n> No 'Access-Control-Allow-Origin' header is present on the requested resource\n\nCORS was configured to allow `http://localhost:3000` and `*.vercel.app` — but not the custom domain `grouphub.thecloverforge.com`. I hardcoded the production URL into the allowlist and added a wildcard fallback: if the origin's root domain matches any configured URL's root domain, it's allowed. For example, `grouphub.thecloverforge.com` extends to `*.thecloverforge.com` automatically.\n\nI also added a safety net: if no origins are explicitly configured (env vars empty on Render), CORS falls back to permissive mode. The CSRF middleware still protects state-changing requests.\n\n## Round Two: CSRF\n\nWith CORS passing, the next error arrived:\n\n> CSRF validation failed\n\nThe CSRF middleware checked if the request's `Origin` header started with `CLIENT_URL`. But `CLIENT_URL` wasn't set on Render, defaulting to an empty string. An empty string technically passes `startsWith(\"\")` for everything, but the middleware only ran when `CLIENT_URL` was truthy. The fix: hardcode the allowed URLs in the CSRF middleware the same way as CORS.\n\n## Round Three: Instant Logout\n\nCORS and CSRF were both green. Login worked. But one second after arriving at the dashboard, the user was kicked back to the login page.\n\nEvery API call returned 401. The access token cookie wasn't being sent.\n\nThe culprit was `SameSite`. The cookie was set with `sameSite: \"lax\"` because `NODE_ENV` wasn't set on Render — it defaulted to `\"development\"`. `SameSite=Lax` blocks cookies on cross-origin fetch requests. The browser silently dropped the cookie, every API call returned 401, the refresh chain failed, and the session was cleared.\n\nThe initial fix used `NODE_ENV === \"production\"` to pick `sameSite: \"none\"`, but Render didn't have `NODE_ENV` set. The real fix: detect cross-origin mode at request time by comparing `Origin` header against the server's `Host` header. If they differ, use `sameSite: \"none\"` with `secure: true`. If they match (localhost dev), use `sameSite: \"lax\"` without `secure`.\n\nThis finally worked. No env vars needed.\n\n## Lessons\n\n| Layer | Issue | Fix |\n|---|---|---|\n| CORS | Custom domain not in allowlist | Root-domain wildcard + permissive fallback |\n| CSRF | CLIENT_URL env var not set | Hardcoded URLs matching CORS logic |\n| Cookie | SameSite defaulted to Lax | Runtime Origin vs Host comparison |\n\nThe browser's security model has three independent layers for cross-origin auth. Each one can independently block the request, and the error messages rarely tell you which layer failed. The CORS error points at the first layer. The CSRF error points at the second. The third — dropped cookies — doesn't error at all. The request just silently arrives without credentials.\n\nWhat looked like a simple deployment ended up being a masterclass in browser security mechanisms and the importance of testing each layer independently.",
       "toc": []
     },
-    "createdAt": { "$date": "2026-07-20T22:00:00.000Z" },
+    "createdAt": { "$date": "2026-07-20T23:00:00.000Z" },
     "date": { "$date": "2026-07-20T00:00:00.000Z" },
-    "excerpt": "Closing the final four security findings from the audit: cookie-based auth, credential rotation, email verification, and enum hardening — taking the score from 87 to a clean 100.",
+    "excerpt": "Deploying a split-frontend app across Vercel and Render meant running a gauntlet of CORS, CSRF, and SameSite cookie issues — each one silently breaking auth in a different way.",
+    "tags": [
+      { "name": "deployment", "slug": "deployment" },
+      { "name": "authentication", "slug": "authentication" },
+      { "name": "cors", "slug": "cors" },
+      { "name": "security", "slug": "security" },
+      { "name": "cookies", "slug": "cookies" }
+    ],
+    "title": "Deploying a Cross-Origin Auth System: CORS, CSRF, SameSite, and the Cookie That Wasn't There",
+    "updatedAt": { "$date": "2026-07-20T23:00:00.000Z" },
+    "analytics": { "views": 0, "likes": 0, "bookmarks": 0, "shares": 0 },
+    "categories": [
+      { "name": "engineering", "slug": "engineering" },
+      { "name": "devops", "slug": "devops" }
+    ],
+    "coverImage": null,
+    "difficulty": "advanced",
+    "hero": null,
+    "isFeatured": true,
+    "isPinned": false,
+    "lessons": [
+      "CORS, CSRF, and SameSite are three independent layers that can each block cross-origin auth",
+      "SameSite=Lax silently drops cookies on cross-origin fetch requests — no error, no warning",
+      "Detect cross-origin mode at runtime by comparing Origin header against Host header",
+      "Always test each auth layer independently during deployment"
+    ],
+    "navigation": { "previous": null, "next": "security-sprint-four-fixes" },
+    "reading": { "minutes": 6, "words": 1050 },
+    "revision": 1,
+    "seo": null,
+    "series": {
+      "id": "grouphub-deployment",
+      "title": "GroupHub Deployment",
+      "part": 1,
+      "chapter": 1,
+      "order": 1
+    },
+    "source": { "file": "SESSION_LOG.md", "chapter": 5 },
+    "status": "published",
+    "tech": [
+      { "name": "Next.js", "slug": "nextjs" },
+      { "name": "Express", "slug": "express" },
+      { "name": "Vercel", "slug": "vercel" },
+      { "name": "Render", "slug": "render" }
+    ],
+    "timestamps": {
+      "projectDate": { "$date": "2026-07-20T00:00:00.000Z" },
+      "publishedAt": { "$date": "2026-07-20T00:00:00.000Z" }
+    }
+  },
+  {
+    "_id": { "$oid": "6a5e086d88289d95e33d9c50" },
+    "slug": "security-matchmaking-roundup",
+    "__v": 0,
+    "content": {
+      "markdown": "With the app deployed and auth working, the final sprint tied together two threads: closing the last security gaps and documenting the matchmaking system.\n\n## C-02: JWT Access Token in httpOnly Cookie\n\n**The problem:** The access token lived in `localStorage`, readable by any JavaScript in the same origin. An XSS vulnerability — even a minor one — would leak it instantly.\n\n**The fix:** Moved the access token to an httpOnly, signed cookie scoped to `/api/v1`. JavaScript can't read it, can't exfiltrate it, can't replay it. The backend sets it automatically on login, register, and refresh. The auth middleware reads from `req.signedCookies.accessToken` with a fallback to the `Authorization` header for rollout compatibility.\n\n**Files changed:** `token.service.js` (cookie set/clear helpers), `auth.controller.js` (cookie on all auth responses), `auth.middleware.js` (cookie-first token extraction), `lib/api.js` (stripped all localStorage token logic, now relies on `credentials: 'include'`).\n\n## C-01: Credential Rotation\n\n**The problem:** Hardcoded, weak secrets in use since day one.\n\n**The fix:** Generated new `APP_SECRET`, `JWT_ACCESS_SECRET`, and `JWT_REFRESH_SECRET` using `crypto.randomBytes(32)` — 64 hex characters each. Third-party credentials (MongoDB, Resend, Groq, Redis, Sentry) were flagged for manual rotation through their respective dashboards.\n\n## M-07: Email Verification Flow\n\n**The problem:** Users could register and immediately use the system with an unverified email. This made spam accounts and identity squatting trivially easy.\n\n**The fix:** A complete email verification flow:\n\n- On registration, a signed JWT (24h expiry, `type: email-verify`) is generated\n- An email is sent via Resend containing a verification link\n- `GET /api/v1/auth/verify-email?token=xxx` validates the token and sets `emailVerified: true`\n- The `/verify-email` frontend page has verifying, success, and error states with a retry option\n\nIn development mode without a Resend key, the verification link is logged to the console instead.\n\n## L-04: Enum Hardening\n\n**The problem:** The User model had `moderator` in its role enum, but no moderator logic, guards, or UI existed anywhere. Dead enum values are attack surface — if a bug ever set `role: 'moderator'`, the system would accept it silently.\n\n**The fix:** Removed `moderator` from the enum. Kept `admin` (referenced in seed script) and `user` (the default).\n\n## The Matchmaking Algorithm\n\nWith security squared away, I documented the AI Fit scoring system:\n\n| Dimension | Weight | Max |\n|---|---|---|\n| Skills overlap | 35% | 35 pts |\n| Interest × category | 20% | 20 pts |\n| Availability fit | 20% | 20 pts |\n| Experience × stage | 10% | 10 pts |\n| Reputation | 15% | 15 pts |\n\nEach dimension is calculated independently and summed. The final score is rounded to an integer 0–100. Projects and members already owned or joined are excluded.\n\nI also fixed a consistency bug: the backend was returning scores like `85.2` (rounded to 1 decimal), but the dashboard showed the raw value while the find-projects page rounded to an integer. Now the backend returns `Math.round(...)` directly, so both pages show the same number.\n\n## Documentation Cleanup\n\nThe root directory had accumulated 8 markdown documentation files. I moved them all into a `docs/` folder and added it to `.gitignore` — reference documentation that documents the process, not the codebase.\n\n## What's Left\n\n- **Manual credential rotation:** MongoDB Atlas, Resend, Groq, Redis, and Sentry credentials need to be rotated through their respective dashboards\n- **Email verification polish:** The flow works but the frontend could show a banner on the dashboard prompting unverified users to check their email\n- **Rate limit tuning:** Current limits (auth 20/15min, API 60/min) may need adjustment based on real usage patterns\n\nEvery finding from the original audit that can be fixed in code has been fixed. The audit report is now historical record — the codebase has moved past every issue it identified.",
+      "toc": []
+    },
+    "createdAt": { "$date": "2026-07-20T23:00:00.000Z" },
+    "date": { "$date": "2026-07-20T00:00:00.000Z" },
+    "excerpt": "Closing the four remaining security findings, documenting the matchmaking algorithm, fixing a display inconsistency, and cleaning up the repo — the final sprint to a clean posture.",
     "tags": [
       { "name": "security", "slug": "security" },
       { "name": "authentication", "slug": "authentication" },
-      { "name": "backend", "slug": "backend" },
-      { "name": "devops", "slug": "devops" }
+      { "name": "matchmaking", "slug": "matchmaking" },
+      { "name": "documentation", "slug": "documentation" }
     ],
-    "title": "Closing the Gap: From 87 to 100 — The Final 4 Security Fixes",
-    "updatedAt": { "$date": "2026-07-20T22:00:00.000Z" },
+    "title": "Security Sprint, Matchmaking Docs, and the Final Cleanup",
+    "updatedAt": { "$date": "2026-07-20T23:00:00.000Z" },
     "analytics": { "views": 0, "likes": 0, "bookmarks": 0, "shares": 0 },
     "categories": [
       { "name": "engineering", "slug": "engineering" },
@@ -29,23 +89,29 @@
     "isFeatured": true,
     "isPinned": false,
     "lessons": [
-      "Never store JWTs in localStorage — use httpOnly cookies",
-      "Rotate secrets regularly, not just at project inception",
-      "Email verification prevents spam accounts and identity squatting",
-      "Remove unused enum values — dead code is attack surface"
+      "HttpOnly cookies eliminate the XSS token exfiltration vector entirely",
+      "Email verification is a low-effort high-impact security control",
+      "Score display consistency matters — round at the source, not at each consumer",
+      "Dead enum values are attack surface, not harmless defaults"
     ],
-    "navigation": { "previous": null, "next": null },
-    "reading": { "minutes": 4, "words": 720 },
+    "navigation": { "previous": "deploying-cross-origin-auth", "next": null },
+    "reading": { "minutes": 5, "words": 880 },
     "revision": 1,
     "seo": null,
-    "series": null,
-    "source": { "file": "SESSION_LOG.md", "chapter": 4 },
+    "series": {
+      "id": "grouphub-deployment",
+      "title": "GroupHub Deployment",
+      "part": 2,
+      "chapter": 2,
+      "order": 2
+    },
+    "source": { "file": "SESSION_LOG.md", "chapter": 5 },
     "status": "published",
     "tech": [
       { "name": "Node.js", "slug": "nodejs" },
       { "name": "Express", "slug": "express" },
-      { "name": "MongoDB", "slug": "mongodb" },
-      { "name": "Next.js", "slug": "nextjs" }
+      { "name": "Next.js", "slug": "nextjs" },
+      { "name": "MongoDB", "slug": "mongodb" }
     ],
     "timestamps": {
       "projectDate": { "$date": "2026-07-20T00:00:00.000Z" },
