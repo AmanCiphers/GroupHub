@@ -26,13 +26,21 @@ app.use(express.urlencoded({ extended: true, limit: "1mb" }))
 app.use(cookieParser(env.APP_SECRET))
 app.use(mongoSanitize())
 
+const allowedOrigins = [
+  env.CLIENT_URL,
+  ...env.CORS_ORIGIN.split(",").map((o) => o.trim()),
+  "http://localhost:3000",
+  "https://grouphub.thecloverforge.com",
+].filter(Boolean)
+
 app.use((req, res, next) => {
-  if (env.CLIENT_URL && ["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     const origin = req.headers.origin
     const referer = req.headers.referer
+    const value = origin || referer
 
-    if (origin || referer) {
-      const isAllowed = (origin || referer).startsWith(env.CLIENT_URL)
+    if (value && allowedOrigins.length > 0) {
+      const isAllowed = allowedOrigins.some((o) => value.startsWith(o))
       if (!isAllowed) {
         res.status(403).json({ success: false, message: "CSRF validation failed" })
         return
