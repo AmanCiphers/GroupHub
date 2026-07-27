@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Github,
   Globe,
-  Link as LinkIcon,
   Lock,
   LogOut,
   Mail,
@@ -279,7 +278,7 @@ export default function AccountPage() {
                       <label className="text-sm font-black">Email</label>
                       <div className="relative mt-2">
                         <Mail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#77766f]" />
-                        <input value={profile.email} className="h-11 w-full border border-[#d9d8d2] bg-[#efeee8] pl-10 pr-3 font-semibold text-[#77766f]" readOnly />
+                        <input value={profile.email} className="h-11 w-full border border-[#d9d8d2] bg-[#efeee8] pl-10 pr-3 font-semibold text-[#77766f]" readOnly tabIndex={-1} />
                       </div>
                     </div>
                     <div className="sm:col-span-2">
@@ -454,7 +453,7 @@ export default function AccountPage() {
                 )}
                 {isLogin && (
                   <div className="text-right">
-                    <Link href="#" className="text-xs font-black underline underline-offset-4">
+                    <Link href="/forgot-password" className="text-xs font-black underline underline-offset-4">
                       Forgot password?
                     </Link>
                   </div>

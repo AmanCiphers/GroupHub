@@ -16,17 +16,16 @@ const envSchema = z.object({
   MONGODB_DB_NAME: z.string().min(1).default("grouphub"),
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_REFRESH_SECRET: z.string().min(16),
+  JWT_EMAIL_SECRET: z.string().optional().default(""),
+  JWT_RESET_SECRET: z.string().optional().default(""),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(10).max(15).default(12),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   EMAIL_FROM: z.string().optional().default(""),
   RESEND_API_SECRET: z.string().optional().default(""),
-  AI_PROVIDER: z.string().optional().default("groq"),
   GROQ_API_KEY: z.string().optional().default(""),
   GROQ_MODEL: z.string().optional().default("llama-3.3-70b-versatile"),
-  REDIS_URL: z.string().optional().default(""),
-  REDIS_TOKEN: z.string().optional().default(""),
-  SENTRY_DSN: z.string().optional().default(""),
 })
 
 const parsed = envSchema.safeParse(process.env)

@@ -1,17 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowUpRight,
   Bell,
-  CheckCircle2,
+  CheckCheck,
   MessageSquare,
   Plus,
   Save,
   Settings,
-  Users,
+  X,
 } from "lucide-react"
 import { apiFetch, getStoredUser } from "@/lib/api"
 import PillInput from "@/components/PillInput"
@@ -117,7 +117,55 @@ export default function DashboardPage() {
   const [categories, setCategories] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
 
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef(null)
+
   const router = useRouter()
+
+  const loadNotifications = useCallback(async () => {
+    try {
+      const payload = await apiFetch("/api/v1/notifications")
+      const list = payload.data.notifications || []
+      setNotifications(list)
+      setUnreadCount(list.filter((n) => !n.readAt).length)
+    } catch {
+      // not critical
+    }
+  }, [])
+
+  async function markNotifRead(id) {
+    try {
+      await apiFetch(`/api/v1/notifications/${id}/read`, { method: "PATCH" })
+      setNotifications((prev) =>
+        prev.map((n) => (n._id === id ? { ...n, readAt: new Date().toISOString() } : n))
+      )
+      setUnreadCount((prev) => Math.max(prev - 1, 0))
+    } catch {
+      // silent
+    }
+  }
+
+  async function markAllNotifsRead() {
+    try {
+      await apiFetch("/api/v1/notifications/read-all", { method: "PATCH" })
+      setNotifications((prev) => prev.map((n) => ({ ...n, readAt: n.readAt || new Date().toISOString() })))
+      setUnreadCount(0)
+    } catch {
+      // silent
+    }
+  }
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setNotifOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   async function loadMetadata() {
     try {
@@ -146,7 +194,6 @@ export default function DashboardPage() {
 
       const recPayload = await apiFetch("/api/v1/matchmaking/projects?limit=4")
       setRecommendedProjects(recPayload.data?.projects || [])
-      setRecommendedLoading(false)
     } catch (requestError) {
       setError(requestError.message)
 
@@ -155,6 +202,7 @@ export default function DashboardPage() {
       }
     } finally {
       setLoading(false)
+      setRecommendedLoading(false)
     }
   }
 
@@ -166,7 +214,8 @@ export default function DashboardPage() {
 
     loadMetadata()
     loadDashboard()
-  }, [])
+    loadNotifications()
+  }, [loadNotifications])
 
   const handleCreateProject = async (event) => {
     event.preventDefault()
@@ -277,12 +326,87 @@ export default function DashboardPage() {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="flex size-11 items-center justify-center border border-[#d9d8d2] bg-white">
-              <Bell className="size-5" />
-            </button>
-            <button className="flex size-11 items-center justify-center border border-[#d9d8d2] bg-white">
+            <div className="relative" ref={notifRef}>
+              <button
+                onClick={() => setNotifOpen((v) => !v)}
+                className="relative flex size-11 items-center justify-center border border-[#d9d8d2] bg-white transition hover:bg-[#efeee8]"
+              >
+                <Bell className="size-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-[#171717] text-[10px] font-black text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 top-12 z-50 w-80 border border-[#d9d8d2] bg-[#fbfbfa] shadow-xl">
+                  <div className="flex items-center justify-between border-b border-[#d9d8d2] px-4 py-3">
+                    <p className="text-sm font-black uppercase tracking-[0.12em]">
+                      Notifications
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllNotifsRead}
+                          className="flex items-center gap-1 text-xs font-black text-[#55544f] hover:text-[#171717]"
+                        >
+                          <CheckCheck className="size-3.5" />
+                          Mark all read
+                        </button>
+                      )}
+                      <button onClick={() => setNotifOpen(false)} className="text-[#77766f] hover:text-[#171717]">
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <p className="text-sm font-semibold text-[#77766f]">No notifications yet.</p>
+                        <p className="mt-1 text-xs font-semibold text-[#77766f]">
+                          Updates about applications and team activity appear here.
+                        </p>
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n._id}
+                          onClick={() => {
+                            if (!n.readAt) markNotifRead(n._id)
+                          }}
+                          className={`flex w-full items-start gap-3 border-b border-[#d9d8d2] px-4 py-3 text-left transition hover:bg-[#efeee8] ${
+                            n.readAt ? "" : "bg-white"
+                          }`}
+                        >
+                          <div className="flex size-8 shrink-0 items-center justify-center bg-[#2f2f2d] text-white">
+                            <Bell className="size-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold leading-snug">{n.title}</p>
+                            {n.body && (
+                              <p className="mt-0.5 text-xs font-semibold text-[#55544f] line-clamp-2">
+                                {n.body}
+                              </p>
+                            )}
+                            <p className="mt-1 text-[10px] font-semibold text-[#99988f]">
+                              {formatDate(n.createdAt)}
+                            </p>
+                          </div>
+                          {!n.readAt && (
+                            <span className="mt-1.5 flex size-2 shrink-0 rounded-full bg-[#171717]" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <Link href="/account" className="flex size-11 items-center justify-center border border-[#d9d8d2] bg-white transition hover:bg-[#efeee8]">
               <Settings className="size-5" />
-            </button>
+            </Link>
             <button
               onClick={() => {
                 setError("")
@@ -646,7 +770,7 @@ export default function DashboardPage() {
       </section>
 
       {showNewProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/70 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/70 p-4" role="dialog" aria-modal="true" aria-label="Create new project">
           <div className="w-full max-w-xl border border-[#171717] bg-[#fbfbfa] p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-black">Create New Project</h2>
             <p className="mt-2 font-semibold text-[#55544f]">

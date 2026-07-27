@@ -19,11 +19,12 @@ const steps = [
 
 export default function HomePage() {
   const [projects, setProjects] = useState([])
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     apiFetch("/api/v1/projects?limit=3&status=recruiting")
       .then((payload) => setProjects(payload.data.projects || []))
-      .catch(() => {})
+      .catch(() => setError(true))
   }, [])
 
   return (
@@ -95,6 +96,13 @@ export default function HomePage() {
             </h2>
           </div>
 
+          {error && (
+            <p className="text-sm text-[#77766f]">Could not load projects right now.</p>
+          )}
+          {!error && projects.length === 0 && (
+            <p className="text-sm text-[#77766f]">No projects recruiting yet. Be the first to create one!</p>
+          )}
+          {projects.length > 0 && (
           <div className="grid gap-3">
             {projects.map((project) => {
               const openRoles = (project.roles || []).filter(
@@ -131,6 +139,7 @@ export default function HomePage() {
               )
             })}
           </div>
+        )}
         </div>
       </section>
 

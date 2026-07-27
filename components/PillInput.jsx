@@ -68,7 +68,7 @@ export default function PillInput({ values, onChange, placeholder, suggestions }
         onClick={() => inputRef.current?.focus()}
       >
         {values.map((value, index) => (
-          <span key={index} className="flex items-center gap-1 border border-[#171717] bg-white px-2 py-0.5 text-sm font-black">
+          <span key={`${value}-${index}`} className="flex items-center gap-1 border border-[#171717] bg-white px-2 py-0.5 text-sm font-black">
             {value}
             <button type="button" onClick={() => remove(index)} className="hover:text-[#77766f]">
               <X className="size-3" />

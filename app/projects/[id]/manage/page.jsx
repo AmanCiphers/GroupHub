@@ -1,40 +1,29 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   Activity,
   ArrowLeft,
-  ArrowUpRight,
   BarChart3,
-  Bell,
-  BookOpen,
   Briefcase,
   Calendar,
   CheckCircle2,
-  ChevronDown,
-  CircleDot,
   Clock,
   Edit3,
   ExternalLink,
   FileText,
-  Flag,
   List,
   Loader2,
-  LogOut,
   MapPin,
   MessageSquare,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Rocket,
-  Search,
   Settings,
   Target,
   Trash2,
-  Trophy,
-  UserPlus,
   Users,
   X,
 } from "lucide-react"
@@ -795,6 +784,9 @@ export default function ProjectManagePage() {
   const [selectedTask, setSelectedTask] = useState(null)
   const [showCreateTask, setShowCreateTask] = useState(false)
 
+  // Track per-tab loaded state to prevent re-fetches on project re-render
+  const loadedTabs = useRef({})
+
   // Roles
   const [showCreateRole, setShowCreateRole] = useState(false)
 
@@ -877,10 +869,10 @@ export default function ProjectManagePage() {
   // Load tab-specific data
   useEffect(() => {
     if (!project || error) return
-    if (activeTab === "applications" && !applications.length) loadApplications()
-    if (activeTab === "team" && !members.length) loadMembers()
-    if (activeTab === "overview" && !activity.length) { loadActivity(); loadTasks() }
-    if (activeTab === "tasks") { if (!tasks.length) loadTasks(); if (!members.length) loadMembers() }
+    if (activeTab === "applications" && !loadedTabs.current.applications) { loadApplications(); loadedTabs.current.applications = true }
+    if (activeTab === "team" && !loadedTabs.current.team) { loadMembers(); loadedTabs.current.team = true }
+    if (activeTab === "overview" && !loadedTabs.current.overview) { loadActivity(); loadTasks(); loadedTabs.current.overview = true }
+    if (activeTab === "tasks" && !loadedTabs.current.tasks) { loadTasks(); loadMembers(); loadedTabs.current.tasks = true }
   }, [activeTab, project])
 
   // Populate settings form when project loads
