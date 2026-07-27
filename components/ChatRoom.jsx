@@ -94,44 +94,62 @@ export default function ChatRoom({ conversationId }) {
             No messages yet. Start the conversation!
           </p>
         ) : (
-          sorted.map((msg) => (
-            <div key={msg._id} className={`flex ${msg.senderId?._id === user?.id ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[75%] rounded-lg px-4 py-2 text-sm ${
-                  msg.senderId?._id === user?.id
-                    ? "bg-[#171717] text-white"
-                    : "border border-[#d9d8d2] bg-white text-[#171717]"
-                }`}
-              >
-                {msg.senderId?._id !== user?.id && (
-                  <p className="mb-1 text-xs font-black uppercase tracking-[0.1em] text-[#77766f]">
-                    {msg.senderId?.fullName || "Unknown"}
-                  </p>
+          sorted.map((msg, i) => {
+            const isOwn = msg.senderId?._id === user?.id
+            const prev = sorted[i - 1]
+            const showAvatar = !isOwn && msg.senderId?._id !== prev?.senderId?._id
+            const showTime = !isOwn && msg.senderId?._id !== sorted[i + 1]?.senderId?._id
+
+            return (
+              <div key={msg._id} className={`flex ${isOwn ? "justify-end" : "justify-start"} ${showAvatar ? "mt-4" : "mt-0.5"}`}>
+                {!isOwn && (
+                  <div className={`mr-2 flex shrink-0 items-end ${showAvatar ? "" : "invisible"}`}>
+                    <div className="flex size-8 items-center justify-center rounded-full bg-[#2f2f2d] text-xs font-black text-white">
+                      {(msg.senderId?.fullName || "?").split(" ").map((p) => p[0]).join("").slice(0, 2)}
+                    </div>
+                  </div>
                 )}
-                <p className="font-semibold leading-relaxed">{msg.text}</p>
-                <p className="mt-1 text-xs text-[#77766f]/60">
-                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
+                <div className={`flex max-w-[70%] flex-col ${isOwn ? "items-end" : "items-start"}`}>
+                  {showAvatar && !isOwn && (
+                    <p className="mb-1 ml-1 text-xs font-black uppercase tracking-[0.1em] text-[#77766f]">
+                      {msg.senderId?.fullName || "Unknown"}
+                    </p>
+                  )}
+                  <div
+                    className={`w-fit rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+                      isOwn
+                        ? "rounded-br-md bg-[#171717] text-white"
+                        : "rounded-bl-md border border-[#d9d8d2] bg-white text-[#171717]"
+                    }`}
+                  >
+                    <p className="font-medium">{msg.text}</p>
+                  </div>
+                  {(showTime || isOwn) && (
+                    <p className={`mt-0.5 text-[11px] font-semibold text-[#999890] ${isOwn ? "mr-1" : "ml-1"}`}>
+                      {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-[#d9d8d2] p-4">
+      <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-[#d9d8d2] bg-[#fbfbfa] px-4 py-3">
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message..."
-          className="h-10 flex-1 border border-[#d9d8d2] bg-white px-3 text-sm font-semibold outline-none focus:border-[#171717]"
+          className="h-10 flex-1 rounded-full border border-[#d9d8d2] bg-white px-4 text-sm font-medium outline-none transition focus:border-[#171717]"
           maxLength={2000}
         />
         <button
           type="submit"
           disabled={!text.trim() || sending}
-          className="flex size-10 items-center justify-center bg-[#171717] text-white disabled:opacity-40"
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#171717] text-white transition hover:bg-[#2f2f2d] disabled:opacity-30"
         >
           <Send className="size-4" />
         </button>

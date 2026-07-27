@@ -1126,7 +1126,7 @@ export default function ProjectManagePage() {
 
         {activeTab === "chat" && (
           chatConversationId
-            ? <div className="h-[500px] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
+            ? <div className="min-h-[500px] h-[60vh] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
             : <LoadingChat />
         )}
 

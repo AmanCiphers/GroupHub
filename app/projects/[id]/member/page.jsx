@@ -458,7 +458,7 @@ export default function ProjectMemberPage() {
 
         {activeTab === "chat" && (
           chatConversationId
-            ? <div className="h-[500px] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
+            ? <div className="min-h-[500px] h-[60vh] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
             : <div className="flex h-[500px] items-center justify-center border border-[#d9d8d2] bg-[#fbfbfa]"><p className="text-sm font-semibold text-[#77766f]">Loading chat...</p></div>
         )}
 
