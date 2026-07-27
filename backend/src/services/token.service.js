@@ -115,7 +115,7 @@ function setAccessTokenCookie(res, token, req) {
     secure,
     sameSite,
     expires: accessExpiryDate(),
-    path: "/api/v1",
+    path: "/",
   })
 }
 
@@ -126,7 +126,7 @@ function clearAccessTokenCookie(res, req) {
     signed: true,
     secure,
     sameSite,
-    path: "/api/v1",
+    path: "/",
   })
 }
 

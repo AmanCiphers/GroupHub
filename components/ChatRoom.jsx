@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Loader2, Send } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { connectSocket, getSocket } from "@/lib/socket"
@@ -12,7 +12,7 @@ export default function ChatRoom({ conversationId }) {
   const bottomRef = useRef(null)
   const user = getStoredUser()
 
-  useEffect(() => {
+  const loadMessages = useCallback(() => {
     if (!conversationId) return
     setLoading(true)
     apiFetch(`/api/v1/chat/conversations/${conversationId}/messages`)
@@ -22,9 +22,18 @@ export default function ChatRoom({ conversationId }) {
   }, [conversationId])
 
   useEffect(() => {
+    loadMessages()
+  }, [loadMessages])
+
+  useEffect(() => {
     if (!conversationId || !user) return
     const socket = connectSocket()
-    socket.emit("join:conversation", conversationId)
+    socket.on("connect", () => {
+      socket.emit("join:conversation", conversationId)
+    })
+    if (socket.connected) {
+      socket.emit("join:conversation", conversationId)
+    }
 
     const onNewMessage = (msg) => {
       setMessages((prev) => [msg, ...prev])
@@ -53,12 +62,16 @@ export default function ChatRoom({ conversationId }) {
         setSending(false)
       })
     } else {
-      await apiFetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
-        method: "POST",
-        body: JSON.stringify({ text: text.trim() }),
-      })
-      setText("")
-      setSending(false)
+      try {
+        await apiFetch(`/api/v1/chat/conversations/${conversationId}/messages`, {
+          method: "POST",
+          body: JSON.stringify({ text: text.trim() }),
+        })
+        setText("")
+        await loadMessages()
+      } catch {} finally {
+        setSending(false)
+      }
     }
   }
 
