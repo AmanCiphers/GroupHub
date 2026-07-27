@@ -10,9 +10,15 @@ const periods = [
   { value: "week", label: "This Week" },
 ]
 
+const statIcons = {
+  "Active contributors": Users,
+  "Projects completed": Rocket,
+  "Team memberships": Award,
+  "Streak leaders": Flame,
+}
+
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState("all")
-  const [topThree, setTopThree] = useState([])
   const [leaderboard, setLeaderboard] = useState([])
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
@@ -56,7 +62,7 @@ export default function LeaderboardPage() {
             { label: "Team memberships", value: "--" },
             { label: "Streak leaders", value: "--" },
           ]).map((stat) => {
-            const Icon = [Users, Rocket, Award, Flame][stats.indexOf(stat)] || Users
+            const Icon = statIcons[stat.label] || Users
             return (
               <div key={stat.label} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
                 <Icon className="size-5" />
@@ -105,7 +111,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center justify-between gap-4">
                     {index === 0 ? <Trophy className="size-7" /> : <Medal className="size-7" />}
                     <span className={`px-2.5 py-1 text-xs font-black ${index === 0 ? "bg-white text-[#171717]" : "border border-[#d9d8d2] bg-white text-[#55544f]"}`}>
-                      {user.badge}
+                      {user.badge || ""}
                     </span>
                   </div>
                   <div className="mt-6 flex items-center gap-4">
@@ -143,7 +149,7 @@ export default function LeaderboardPage() {
                       <span className="text-2xl font-black text-[#77766f]">#{user.rank}</span>
                       <div className="flex items-center gap-4">
                         <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                          {user.fullName.split(" ").map((part) => part[0]).join("").slice(0, 2)}
+                      {(user.fullName || "?").split(" ").map((part) => part[0]).join("").slice(0, 2)}
                         </div>
                         <div>
                           <h3 className="font-black">{user.fullName}</h3>
