@@ -20,6 +20,7 @@ const statIcons = {
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState("all")
   const [leaderboard, setLeaderboard] = useState([])
+  const [topThree, setTopThree] = useState([])
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
 
