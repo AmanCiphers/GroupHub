@@ -117,9 +117,10 @@ export default function FileManager({ projectId }) {
               </div>
               <div className="flex gap-2">
                 <a
-                  href={`${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5050"}/api/v1/files/${projectId}/download/${file._id}`}
+                  href={file.cloudinaryUrl}
                   className="flex size-9 items-center justify-center border border-[#d9d8d2] transition hover:bg-white"
-                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   <Download className="size-4" />
                 </a>

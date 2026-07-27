@@ -18,16 +18,20 @@ const fileSchema = new mongoose.Schema(
       required: true,
       maxlength: 255,
     },
-    storedName: {
-      type: String,
-      required: true,
-    },
     mimeType: {
       type: String,
       required: true,
     },
     size: {
       type: Number,
+      required: true,
+    },
+    cloudinaryUrl: {
+      type: String,
+      required: true,
+    },
+    cloudinaryPublicId: {
+      type: String,
       required: true,
     },
   },

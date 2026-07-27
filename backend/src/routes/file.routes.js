@@ -1,13 +1,10 @@
 const { Router } = require("express")
-const path = require("path")
-const fs = require("fs")
 const { authMiddleware } = require("../middlewares/auth.middleware")
 const { upload, MAX_SIZE } = require("../config/upload")
+const { uploadService } = require("../services/upload.service")
 const { fileRepository } = require("../repositories/file.repository")
 const { asyncHandler } = require("../utils/asyncHandler")
 const { membershipRepository } = require("../repositories/membership.repository")
-
-const UPLOAD_DIR = path.resolve(__dirname, "../../uploads")
 
 const fileRoutes = Router()
 
@@ -33,13 +30,15 @@ fileRoutes.post(
   asyncHandler(async (req, res) => {
     await ensureMember(req, req.params.projectId)
     if (!req.file) return res.status(400).json({ message: "No file provided" })
+    const result = await uploadService.uploadBuffer(req.file.buffer, req.file.originalname)
     const file = await fileRepository.create({
       projectId: req.params.projectId,
       uploadedBy: req.user.id,
       originalName: req.file.originalname,
-      storedName: req.file.filename,
       mimeType: req.file.mimetype,
       size: req.file.size,
+      cloudinaryUrl: result.secure_url,
+      cloudinaryPublicId: result.public_id,
     })
     res.json({ data: { file } })
   })
@@ -53,9 +52,7 @@ fileRoutes.get(
     if (!file || String(file.projectId) !== req.params.projectId) {
       return res.status(404).json({ message: "File not found" })
     }
-    const filePath = path.join(UPLOAD_DIR, file.storedName)
-    if (!fs.existsSync(filePath)) return res.status(404).json({ message: "File not found on disk" })
-    res.download(filePath, file.originalName)
+    res.redirect(file.cloudinaryUrl)
   })
 )
 
@@ -67,8 +64,7 @@ fileRoutes.delete(
     if (!file || String(file.projectId) !== req.params.projectId) {
       return res.status(404).json({ message: "File not found" })
     }
-    const filePath = path.join(UPLOAD_DIR, file.storedName)
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath)
+    await uploadService.removeFile(file.cloudinaryPublicId).catch(() => {})
     await fileRepository.remove(req.params.fileId)
     res.json({ data: { success: true } })
   })

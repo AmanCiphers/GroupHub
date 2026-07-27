@@ -26,6 +26,9 @@ const envSchema = z.object({
   RESEND_API_SECRET: z.string().optional().default(""),
   GROQ_API_KEY: z.string().optional().default(""),
   GROQ_MODEL: z.string().optional().default("llama-3.3-70b-versatile"),
+  CLOUDINARY_CLOUD_NAME: z.string().optional().default(""),
+  CLOUDINARY_API_KEY: z.string().optional().default(""),
+  CLOUDINARY_API_SECRET: z.string().optional().default(""),
 })
 
 const parsed = envSchema.safeParse(process.env)
