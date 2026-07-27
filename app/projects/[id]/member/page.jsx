@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react"
 import { apiFetch, getStoredUser } from "@/lib/api"
+import ChatRoom from "@/components/ChatRoom"
 
 function formatStage(stage) {
   return stage
@@ -80,6 +81,7 @@ export default function ProjectMemberPage() {
   const [claiming, setClaiming] = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
   const [updatingTask, setUpdatingTask] = useState(false)
+  const [chatConversationId, setChatConversationId] = useState(null)
 
   const loadProject = useCallback(async () => {
     setLoading(true)
@@ -104,6 +106,13 @@ export default function ProjectMemberPage() {
   }, [id])
 
   useEffect(() => { loadProject() }, [loadProject])
+
+  useEffect(() => {
+    if (!project || !activeTab === "chat" || chatConversationId) return
+    apiFetch(`/api/v1/chat/conversations/project/${project._id || project.id}`, { method: "POST" })
+      .then((p) => setChatConversationId(p.data.conversation._id))
+      .catch(() => {})
+  }, [activeTab, project, chatConversationId])
 
   if (loading) {
     return (
@@ -448,7 +457,9 @@ export default function ProjectMemberPage() {
         )}
 
         {activeTab === "chat" && (
-          <PlaceholderTab icon={MessageSquare} title="Chat" message="Team chat coming soon. Members will be able to discuss project updates in real-time." />
+          chatConversationId
+            ? <div className="h-[500px] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
+            : <div className="flex h-[500px] items-center justify-center border border-[#d9d8d2] bg-[#fbfbfa]"><p className="text-sm font-semibold text-[#77766f]">Loading chat...</p></div>
         )}
 
         {activeTab === "ai" && (

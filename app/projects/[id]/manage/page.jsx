@@ -29,6 +29,7 @@ import {
 } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import PillInput from "@/components/PillInput"
+import ChatRoom from "@/components/ChatRoom"
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -790,6 +791,9 @@ export default function ProjectManagePage() {
   // Roles
   const [showCreateRole, setShowCreateRole] = useState(false)
 
+  // Chat
+  const [chatConversationId, setChatConversationId] = useState(null)
+
   // Metadata for settings
   const [categories, setCategories] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
@@ -873,6 +877,12 @@ export default function ProjectManagePage() {
     if (activeTab === "team" && !loadedTabs.current.team) { loadMembers(); loadedTabs.current.team = true }
     if (activeTab === "overview" && !loadedTabs.current.overview) { loadActivity(); loadTasks(); loadedTabs.current.overview = true }
     if (activeTab === "tasks" && !loadedTabs.current.tasks) { loadTasks(); loadMembers(); loadedTabs.current.tasks = true }
+    if (activeTab === "chat" && !loadedTabs.current.chat && !chatConversationId) {
+      apiFetch(`/api/v1/chat/conversations/project/${project._id || project.id}`, { method: "POST" })
+        .then((p) => setChatConversationId(p.data.conversation._id))
+        .catch(() => {})
+      loadedTabs.current.chat = true
+    }
   }, [activeTab, project])
 
   // Populate settings form when project loads
@@ -1114,7 +1124,11 @@ export default function ProjectManagePage() {
           />
         )}
 
-        {activeTab === "chat" && <PlaceholderTab icon={MessageSquare} title="Chat" message="Team chat coming soon. Members will be able to discuss project updates in real-time." />}
+        {activeTab === "chat" && (
+          chatConversationId
+            ? <div className="h-[500px] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
+            : <LoadingChat />
+        )}
 
         {activeTab === "ai" && (
           <PlaceholderTab
@@ -1795,6 +1809,14 @@ function SettingsForm({ form, setForm, categories, skillPills, setSkillPills, ta
           </button>
         </div>
       </form>
+    </div>
+  )
+}
+
+function LoadingChat() {
+  return (
+    <div className="flex h-[500px] items-center justify-center border border-[#d9d8d2] bg-[#fbfbfa]">
+      <p className="text-sm font-semibold text-[#77766f]">Loading chat...</p>
     </div>
   )
 }
