@@ -10,10 +10,12 @@ const { slugify } = require("../utils/slugify")
 
 function serializeProject(project, roles = [], savedIds = []) {
   const projectId = String(project._id)
+  const owner = project.ownerId || {}
 
   return {
     id: projectId,
-    ownerId: String(project.ownerId),
+    ownerId: typeof owner === "object" ? String(owner._id) : String(owner),
+    ownerName: typeof owner === "object" ? owner.fullName || "" : "",
     title: project.title,
     slug: project.slug,
     description: project.description,
@@ -153,6 +155,8 @@ async function getProject(idOrSlug, currentUserId) {
     throw new ApiError(404, "Project not found")
   }
 
+  await project.populate("ownerId", "fullName")
+
   const [roles, savedIds, membership] = await Promise.all([
     roleRepository.findByProject(project._id),
     currentUserId ? savedProjectRepository.findIdsByUser(currentUserId) : [],
@@ -160,7 +164,7 @@ async function getProject(idOrSlug, currentUserId) {
   ])
 
   const result = serializeProject(project, roles, savedIds)
-  result.isOwner = currentUserId ? String(project.ownerId) === String(currentUserId) : false
+  result.isOwner = currentUserId ? String(project.ownerId?._id || project.ownerId) === String(currentUserId) : false
   result.isMember = !!membership
   return result
 }

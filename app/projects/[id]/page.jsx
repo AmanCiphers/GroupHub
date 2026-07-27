@@ -7,18 +7,17 @@ import {
   ArrowLeft,
   ArrowUpRight,
   Bookmark,
-  Briefcase,
   Calendar,
   CheckCircle2,
   CircleDot,
   Clock,
   MapPin,
-  MessageSquare,
   Settings,
   Target,
   Users,
 } from "lucide-react"
 import { apiFetch, getStoredUser } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 
 function formatStage(stage) {
   return stage
@@ -122,8 +121,53 @@ export default function ProjectDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
-        <section className="px-6 py-20 sm:px-10 lg:px-20 xl:px-28">
-          <p className="text-lg font-black">Loading project...</p>
+        <section className="border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-10 sm:px-10 lg:px-20 xl:px-28">
+          <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-6 w-20 rounded-none" />
+                <Skeleton className="h-6 w-24 rounded-none" />
+                <Skeleton className="h-6 w-28 rounded-none" />
+              </div>
+              <Skeleton className="mt-6 h-12 w-3/4 rounded-none" />
+              <Skeleton className="mt-5 h-6 w-full rounded-none" />
+              <Skeleton className="mt-2 h-6 w-2/3 rounded-none" />
+            </div>
+            <div className="flex flex-col gap-3 lg:items-end">
+              <Skeleton className="h-11 w-32 rounded-none" />
+            </div>
+          </div>
+        </section>
+        <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+          <div className="grid gap-10 lg:grid-cols-[1fr_320px]">
+            <div className="space-y-10">
+              <div>
+                <Skeleton className="mb-5 h-7 w-40 rounded-none" />
+                <div className="grid gap-4">
+                  {[1, 2].map((i) => (
+                    <div key={i} className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
+                      <Skeleton className="h-7 w-48 rounded-none" />
+                      <Skeleton className="mt-2 h-4 w-full rounded-none" />
+                      <div className="mt-4 flex gap-4">
+                        <Skeleton className="h-4 w-24 rounded-none" />
+                        <Skeleton className="h-4 w-20 rounded-none" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <aside className="space-y-5">
+              <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
+                <Skeleton className="h-4 w-16 rounded-none" />
+                <div className="mt-4 space-y-4">
+                  <Skeleton className="h-10 w-full rounded-none" />
+                  <Skeleton className="h-10 w-full rounded-none" />
+                  <Skeleton className="h-10 w-full rounded-none" />
+                </div>
+              </div>
+            </aside>
+          </div>
         </section>
       </div>
     )
@@ -148,10 +192,11 @@ export default function ProjectDetailPage() {
   if (!project) return null
 
   const canApply = !project.isOwner && !project.isMember
-  const openRoles = (project.roles || []).filter((role) => role.status === "open" && role.slotsOpen > 0)
-  const filledRoles = (project.roles || []).filter((role) => role.status !== "open" || role.slotsOpen === 0)
-  const totalSlots = project.roles.reduce((sum, r) => sum + r.slotsTotal, 0)
-  const filledSlots = project.roles.reduce((sum, r) => sum + r.slotsFilled, 0)
+  const roles = project.roles || []
+  const openRoles = roles.filter((role) => role.status === "open" && role.slotsOpen > 0)
+  const filledRoles = roles.filter((role) => role.status !== "open" || role.slotsOpen === 0)
+  const totalSlots = roles.reduce((sum, r) => sum + (r.slotsTotal || 0), 0)
+  const filledSlots = roles.reduce((sum, r) => sum + (r.slotsFilled || 0), 0)
 
   return (
     <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
@@ -249,7 +294,7 @@ export default function ProjectDetailPage() {
                           <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold text-[#55544f]">
                             <span className="flex items-center gap-1.5">
                               <Users className="size-4" />
-                              {role.slotsOpen} of {role.slotsTotal} spots
+                              {role.slotsOpen || 0} of {role.slotsTotal || 0} spots
                             </span>
                             {role.workloadHoursPerWeek > 0 && (
                               <span className="flex items-center gap-1.5">
@@ -258,13 +303,13 @@ export default function ProjectDetailPage() {
                               </span>
                             )}
                           </div>
-                          {role.requiredSkills.length > 0 && (
+                          {(role.requiredSkills || []).length > 0 && (
                             <div className="mt-4">
                               <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[#77766f]">
                                 Required skills
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                {role.requiredSkills.map((skill) => (
+                                {(role.requiredSkills || []).map((skill) => (
                                   <span key={skill} className="border border-[#171717] bg-white px-3 py-1 text-sm font-black text-[#171717]">
                                     {skill}
                                   </span>
@@ -272,13 +317,13 @@ export default function ProjectDetailPage() {
                               </div>
                             </div>
                           )}
-                          {role.preferredSkills.length > 0 && (
+                          {(role.preferredSkills || []).length > 0 && (
                             <div className="mt-3">
                               <p className="mb-2 text-xs font-black uppercase tracking-[0.14em] text-[#77766f]">
                                 Preferred skills
                               </p>
                               <div className="flex flex-wrap gap-2">
-                                {role.preferredSkills.map((skill) => (
+                                {(role.preferredSkills || []).map((skill) => (
                                   <span key={skill} className="border border-[#d9d8d2] bg-white px-3 py-1 text-sm font-bold text-[#55544f]">
                                     {skill}
                                   </span>
@@ -437,12 +482,12 @@ export default function ProjectDetailPage() {
               </h3>
               <div className="flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                  {project.title.charAt(0).toUpperCase()}
+                  {(project.ownerName || "?").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-sm font-black">Project creator</p>
+                  <p className="text-sm font-black">{project.ownerName || "GroupHub"}</p>
                   <p className="text-xs font-semibold text-[#77766f]">
-                    {project.ownerId ? "GroupHub member" : "Unknown"}
+                    {project.isOwner ? "You" : "Project owner"}
                   </p>
                 </div>
               </div>

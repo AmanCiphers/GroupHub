@@ -6,7 +6,6 @@ import {
   ArrowUpRight,
   Bookmark,
   Briefcase,
-  CheckCircle2,
   CircleDot,
   Clock,
   Filter,
@@ -18,22 +17,23 @@ import {
 } from "lucide-react"
 import { apiFetch, getStoredUser, toQueryString } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination"
 
 const fallbackCategories = [
   "All", "Technology", "Design", "Business", "Marketing", "Gaming", "Social Impact",
 ]
 
-const skillFilters = [
-  "React",
-  "Python",
-  "UI/UX",
-  "Node.js",
-  "TypeScript",
-  "Figma",
-  "Machine Learning",
-  "Mobile",
-  "Marketing",
-  "Data Science",
+const fallbackSkills = [
+  "React", "Python", "UI/UX", "Node.js", "TypeScript",
+  "Figma", "Machine Learning", "Mobile", "Marketing", "Data Science",
 ]
 
 function formatStage(stage) {
@@ -43,6 +43,14 @@ function formatStage(stage) {
         .join(" ")
         .replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "Idea"
+}
+
+function formatDate(value) {
+  if (!value) return "recently"
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+  }).format(new Date(value))
 }
 
 function getOpenRoleStats(project) {
@@ -56,6 +64,8 @@ function getOpenRoleStats(project) {
   }
 }
 
+const PAGE_SIZE = 10
+
 export default function FindProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
@@ -64,13 +74,17 @@ export default function FindProjectsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [categories, setCategories] = useState(fallbackCategories)
+  const [availableSkills, setAvailableSkills] = useState([])
   const [scoreMap, setScoreMap] = useState({})
+  const [page, setPage] = useState(1)
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 })
 
   useEffect(() => {
     apiFetch("/api/v1/metadata")
       .then((payload) => {
         const cats = (payload.data.categories || []).map((c) => c.value)
         setCategories(["All", ...cats])
+        setAvailableSkills(payload.data.skills || [])
       })
       .catch(() => {})
   }, [])
@@ -87,6 +101,8 @@ export default function FindProjectsPage() {
           q: searchQuery,
           category: selectedCategory,
           skill: selectedSkill,
+          page: String(page),
+          limit: String(PAGE_SIZE),
         })
         const [projectsPayload, matchPayload] = await Promise.all([
           apiFetch(`/api/v1/projects${query}`),
@@ -97,6 +113,9 @@ export default function FindProjectsPage() {
 
         if (!cancelled) {
           setProjects(projectsPayload.data.projects || [])
+          setPagination(
+            projectsPayload.data.pagination || { page: 1, pages: 1, total: 0 }
+          )
           const map = {}
           ;(matchPayload.data?.projects || []).forEach((p) => {
             map[p.id] = p.matchScore
@@ -120,7 +139,12 @@ export default function FindProjectsPage() {
       cancelled = true
       window.clearTimeout(timeout)
     }
-  }, [searchQuery, selectedCategory, selectedSkill])
+  }, [searchQuery, selectedCategory, selectedSkill, page])
+
+  function handleFilterChange(setter, value) {
+    setter(value)
+    setPage(1)
+  }
 
   const toggleSave = async (project) => {
     if (!getStoredUser()) {
@@ -198,6 +222,7 @@ export default function FindProjectsPage() {
                     setSelectedCategory("All")
                     setSelectedSkill("All")
                     setSearchQuery("")
+                    setPage(1)
                   }}
                 >
                   Reset
@@ -213,7 +238,7 @@ export default function FindProjectsPage() {
                     {categories.map((category) => (
                       <button
                         key={category}
-                        onClick={() => setSelectedCategory(category)}
+                        onClick={() => handleFilterChange(setSelectedCategory, category)}
                         className={`flex items-center justify-between px-3 py-2 text-left text-sm font-bold transition ${
                           selectedCategory === category
                             ? "bg-[#2f2f2d] text-white"
@@ -231,10 +256,10 @@ export default function FindProjectsPage() {
                     Skills
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {["All", ...skillFilters].map((skill) => (
+                    {["All", ...(availableSkills.length ? availableSkills : fallbackSkills)].map((skill) => (
                       <button
                         key={skill}
-                        onClick={() => setSelectedSkill(skill)}
+                        onClick={() => handleFilterChange(setSelectedSkill, skill)}
                         className={`border px-3 py-1 text-xs font-black transition ${
                           selectedSkill === skill
                             ? "border-[#171717] bg-[#171717] text-white"
@@ -362,7 +387,7 @@ export default function FindProjectsPage() {
                             <h2 className="text-2xl font-black leading-tight text-[#171717] transition group-hover:underline group-hover:underline-offset-4">
                               {project.title}
                             </h2>
-                            <p className="mt-3 max-w-3xl text-base font-medium leading-relaxed text-[#55544f]">
+                            <p className="mt-3 max-w-3xl text-base font-medium leading-relaxed text-[#55544f] line-clamp-4">
                               {project.description}
                             </p>
                           </div>
@@ -454,14 +479,14 @@ export default function FindProjectsPage() {
                         <div className="mt-8">
                           <div className="mb-4 flex items-center gap-3">
                             <div className="flex size-10 items-center justify-center rounded-full bg-[#2f2f2d] text-sm font-black text-white">
-                              GH
+                              {(project.ownerName || "GH").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                             </div>
                             <div>
                               <p className="text-sm font-black text-[#171717]">
-                                GroupHub builder
+                                {project.ownerName || "GroupHub"}
                               </p>
                               <p className="text-xs font-semibold text-[#77766f]">
-                                Posted recently
+                                Posted {formatDate(project.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -489,6 +514,47 @@ export default function FindProjectsPage() {
                 </div>
               )}
             </div>
+
+            {!loading && pagination.pages > 1 && (
+              <div className="mt-8 border-t border-[#d9d8d2] pt-6">
+                <Pagination>
+                  <PaginationContent>
+                    {page > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious onClick={() => setPage(page - 1)} />
+                      </PaginationItem>
+                    )}
+
+                    {Array.from({ length: pagination.pages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === pagination.pages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => (
+                        <span key={p} className="contents">
+                          {idx > 0 && arr[idx - 1] !== p - 1 && (
+                            <PaginationItem>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          )}
+                          <PaginationItem>
+                            <PaginationLink isActive={p === page} onClick={() => setPage(p)}>
+                              {p}
+                            </PaginationLink>
+                          </PaginationItem>
+                        </span>
+                      ))}
+
+                    {page < pagination.pages && (
+                      <PaginationItem>
+                        <PaginationNext onClick={() => setPage(page + 1)} />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
+
+                <p className="mt-3 text-center text-sm font-semibold text-[#77766f]">
+                  Page {pagination.page} of {pagination.pages} ({pagination.total} total projects)
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>

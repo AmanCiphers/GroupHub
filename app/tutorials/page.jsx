@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -24,6 +27,8 @@ const tutorials = [
 ]
 
 export default function TutorialsPage() {
+  const [activeCategory, setActiveCategory] = useState("All")
+  const filtered = activeCategory === "All" ? tutorials : tutorials.filter((t) => t[2] === activeCategory)
   return (
     <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
       <section className="border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
@@ -45,11 +50,12 @@ export default function TutorialsPage() {
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="flex flex-wrap gap-2">
-          {categories.map((category, index) => (
+          {categories.map((category) => (
             <button
               key={category}
+              onClick={() => setActiveCategory(category)}
               className={`border px-4 py-2 text-sm font-black ${
-                index === 0
+                category === activeCategory
                   ? "border-[#171717] bg-[#171717] text-white"
                   : "border-[#d9d8d2] bg-[#fbfbfa] text-[#55544f] hover:border-[#171717]"
               }`}
@@ -62,7 +68,7 @@ export default function TutorialsPage() {
 
       <section className="px-6 pb-20 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {tutorials.map(([title, description, category, duration, difficulty, Icon]) => (
+          {filtered.map(([title, description, category, duration, difficulty, Icon]) => (
             <article key={title} className="group flex min-h-[260px] flex-col border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex size-11 items-center justify-center bg-[#2f2f2d] text-white">
@@ -88,10 +94,10 @@ export default function TutorialsPage() {
                   {category}
                 </span>
               </div>
-              <button className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-[#171717] text-sm font-black transition hover:bg-[#171717] hover:text-white">
+              <Link href="/find-projects" className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-[#171717] text-sm font-black transition hover:bg-[#171717] hover:text-white">
                 <Play className="size-4" />
                 Start
-              </button>
+              </Link>
             </article>
           ))}
         </div>

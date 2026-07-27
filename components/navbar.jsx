@@ -24,7 +24,7 @@ export function Navbar() {
     return (
       <div className="flex flex-col">
   
-        <header className="absolute inset-x-0 top- z-[70]">
+        <header className="absolute inset-x-0 top-0 z-[70]">
           <nav className="xl:grid xl:grid-cols-[1fr_29vw] xl:items-start">
             <div className="flex min-h-24 items-center justify-between bg-transparent px-6 sm:px-10 lg:px-20 xl:px-10 xl:pl-28">
               <Link
