@@ -1,12 +1,9 @@
-import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 
-
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const url = 'https://grouphub.thecloverforge.com'
 
 export const metadata = {
   title: 'GroupHub - Find Your Team, Build Your Vision',
@@ -24,6 +21,19 @@ export const metadata = {
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },
     { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
   ],
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: 'GroupHub - Find Your Team, Build Your Vision',
+    description: 'Connect with skilled team members or find projects to contribute to.',
+    url,
+    siteName: 'GroupHub',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GroupHub - Find Your Team, Build Your Vision',
+    description: 'Connect with skilled team members or find projects to contribute to.',
+  },
 }
 
 export default function RootLayout({ children }) {
@@ -39,10 +49,4 @@ export default function RootLayout({ children }) {
       </body>
     </html>
   )
-}
-
-function WarningDev() {
-  return(<>
-    
-  </>);
 }
