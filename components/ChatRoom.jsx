@@ -10,7 +10,12 @@ export default function ChatRoom({ conversationId }) {
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
+  const inputRef = useRef(null)
   const user = getStoredUser()
+
+  useEffect(() => {
+    inputRef.current?.blur()
+  }, [])
 
   const loadMessages = useCallback(() => {
     if (!conversationId) return
@@ -116,6 +121,7 @@ export default function ChatRoom({ conversationId }) {
 
       <form onSubmit={handleSend} className="flex items-center gap-2 border-t border-[#d9d8d2] p-4">
         <input
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Type a message..."
