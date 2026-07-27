@@ -4,6 +4,7 @@ const express = require("express")
 const helmet = require("helmet")
 const mongoSanitize = require("express-mongo-sanitize")
 const morgan = require("morgan")
+const path = require("path")
 
 const { corsMiddleware } = require("./config/cors")
 const { env } = require("./config/env")
@@ -78,6 +79,8 @@ app.get("/", (_req, res) => {
     },
   })
 })
+
+app.use("/uploads", express.static(path.resolve(__dirname, "../uploads")))
 
 app.use("/api/v1", apiRateLimiter, apiRoutes)
 

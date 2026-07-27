@@ -30,6 +30,7 @@ import {
 import { apiFetch } from "@/lib/api"
 import PillInput from "@/components/PillInput"
 import ChatRoom from "@/components/ChatRoom"
+import FileManager from "@/components/FileManager"
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -753,6 +754,7 @@ const TABS = [
   { id: "team", label: "Team", icon: Users },
   { id: "roles", label: "Roles", icon: Briefcase },
   { id: "tasks", label: "Tasks", icon: List },
+  { id: "files", label: "Files", icon: FileText },
   { id: "chat", label: "Chat", icon: MessageSquare },
   { id: "ai", label: "AI Companion", icon: Rocket },
   { id: "settings", label: "Settings", icon: Settings },
@@ -1128,6 +1130,10 @@ export default function ProjectManagePage() {
           chatConversationId
             ? <div className="min-h-[500px] h-[60vh] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
             : <LoadingChat />
+        )}
+
+        {activeTab === "files" && (
+          <FileManager projectId={project._id || project.id} />
         )}
 
         {activeTab === "ai" && (
