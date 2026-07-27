@@ -47,7 +47,7 @@ const optionalAuthMiddleware = asyncHandler(async (req, _res, next) => {
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET)
+    const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] })
     const user = await userRepository.findById(payload.sub)
 
     if (user && user.status === "active") {

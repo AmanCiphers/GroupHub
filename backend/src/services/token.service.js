@@ -134,10 +134,13 @@ function getSignedAccessToken(req) {
   return req.signedCookies?.accessToken || ""
 }
 
+const emailSecret = () => env.JWT_EMAIL_SECRET || env.JWT_ACCESS_SECRET
+const resetSecret = () => env.JWT_RESET_SECRET || env.JWT_ACCESS_SECRET
+
 function signEmailVerificationToken(userId) {
   return jwt.sign(
     { type: "email-verify" },
-    env.JWT_ACCESS_SECRET,
+    emailSecret(),
     {
       subject: userId,
       expiresIn: "24h",
@@ -146,8 +149,27 @@ function signEmailVerificationToken(userId) {
 }
 
 function verifyEmailVerificationToken(token) {
-  const payload = jwt.verify(token, env.JWT_ACCESS_SECRET, { algorithms: ["HS256"] })
+  const payload = jwt.verify(token, emailSecret(), { algorithms: ["HS256"] })
   if (payload.type !== "email-verify") {
+    throw new Error("Invalid token type")
+  }
+  return payload.sub
+}
+
+function signPasswordResetToken(userId) {
+  return jwt.sign(
+    { type: "password-reset" },
+    resetSecret(),
+    {
+      subject: userId,
+      expiresIn: "1h",
+    }
+  )
+}
+
+function verifyPasswordResetToken(token) {
+  const payload = jwt.verify(token, resetSecret(), { algorithms: ["HS256"] })
+  if (payload.type !== "password-reset") {
     throw new Error("Invalid token type")
   }
   return payload.sub
@@ -168,6 +190,8 @@ const tokenService = {
   signAccessToken,
   signEmailVerificationToken,
   verifyEmailVerificationToken,
+  signPasswordResetToken,
+  verifyPasswordResetToken,
 }
 
 module.exports = { tokenService }

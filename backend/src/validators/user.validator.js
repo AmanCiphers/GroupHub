@@ -7,10 +7,10 @@ const stringListSchema = z
 
 const socialLinksSchema = z
   .object({
-    github: z.string().trim().max(200).optional(),
-    twitter: z.string().trim().max(200).optional(),
-    linkedin: z.string().trim().max(200).optional(),
-    website: z.string().trim().max(200).optional(),
+    github: z.string().trim().url().max(200).optional().or(z.literal("")),
+    twitter: z.string().trim().url().max(200).optional().or(z.literal("")),
+    linkedin: z.string().trim().url().max(200).optional().or(z.literal("")),
+    website: z.string().trim().url().max(200).optional().or(z.literal("")),
   })
   .optional()
 

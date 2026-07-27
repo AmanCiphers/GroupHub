@@ -33,37 +33,32 @@ async function register(payload, req) {
   const email = normalizeEmail(payload.email)
   const existingUser = await userRepository.findByEmail(email)
 
-  if (!existingUser) {
-    const passwordHash = await bcrypt.hash(
-      payload.password,
-      env.BCRYPT_SALT_ROUNDS
-    )
-
-    const user = await userRepository.create({
-      email,
-      fullName: payload.fullName.trim(),
-      passwordHash,
-    })
-
-    const verificationToken = tokenService.signEmailVerificationToken(user.id)
-    emailService.sendVerificationEmail({ to: email, token: verificationToken })
-
-    const accessToken = tokenService.signAccessToken(user)
-    const refresh = await tokenService.createRefreshToken(user, req)
-
-    return {
-      accessToken,
-      refreshToken: refresh.token,
-      refreshExpiresAt: refresh.expiresAt,
-      user: toPublicUser(user),
-    }
+  if (existingUser) {
+    throw new ApiError(409, "An account with this email already exists")
   }
 
+  const passwordHash = await bcrypt.hash(
+    payload.password,
+    env.BCRYPT_SALT_ROUNDS
+  )
+
+  const user = await userRepository.create({
+    email,
+    fullName: payload.fullName.trim(),
+    passwordHash,
+  })
+
+  const verificationToken = tokenService.signEmailVerificationToken(user.id)
+  emailService.sendVerificationEmail({ to: email, token: verificationToken })
+
+  const accessToken = tokenService.signAccessToken(user)
+  const refresh = await tokenService.createRefreshToken(user, req)
+
   return {
-    accessToken: "",
-    refreshToken: "",
-    refreshExpiresAt: new Date(0),
-    user: null,
+    accessToken,
+    refreshToken: refresh.token,
+    refreshExpiresAt: refresh.expiresAt,
+    user: toPublicUser(user),
   }
 }
 
@@ -168,11 +163,43 @@ async function verifyEmail(token) {
   return toPublicUser(updated)
 }
 
+async function forgotPassword(payload) {
+  const email = normalizeEmail(payload.email)
+  const user = await userRepository.findByEmail(email)
+
+  if (!user) {
+    return
+  }
+
+  const token = tokenService.signPasswordResetToken(user.id)
+  emailService.sendPasswordResetEmail({ to: email, token })
+}
+
+async function resetPassword(payload) {
+  let userId
+  try {
+    userId = tokenService.verifyPasswordResetToken(payload.token)
+  } catch {
+    throw new ApiError(400, "Reset link expired or invalid")
+  }
+
+  const user = await userRepository.findById(userId)
+
+  if (!user) {
+    throw new ApiError(400, "Reset link expired or invalid")
+  }
+
+  const passwordHash = await bcrypt.hash(payload.password, env.BCRYPT_SALT_ROUNDS)
+  await userRepository.updateById(userId, { passwordHash })
+}
+
 const authService = {
+  forgotPassword,
   login,
   logout,
   refresh,
   register,
+  resetPassword,
   toPublicUser,
   verifyEmail,
 }

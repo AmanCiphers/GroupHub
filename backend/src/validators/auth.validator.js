@@ -38,4 +38,36 @@ const loginSchema = z
   })
   .strict()
 
-module.exports = { loginSchema, registerSchema }
+const forgotPasswordSchema = z
+  .object({
+    body: z.object({
+      email: z.string().trim().email().max(254),
+    }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .strict()
+
+const resetPasswordSchema = z
+  .object({
+    body: z
+      .object({
+        token: z.string().min(1),
+        password: passwordSchema,
+        confirmPassword: passwordSchema,
+      })
+      .refine((data) => data.password === data.confirmPassword, {
+        path: ["confirmPassword"],
+        message: "Passwords do not match",
+      }),
+    params: z.object({}).optional(),
+    query: z.object({}).optional(),
+  })
+  .strict()
+
+module.exports = {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema,
+}

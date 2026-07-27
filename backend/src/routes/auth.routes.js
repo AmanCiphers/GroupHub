@@ -1,18 +1,22 @@
 const express = require("express")
 const {
+  forgotPassword,
   getMe,
   login,
   logout,
   refresh,
   register,
+  resetPassword,
   verifyEmail,
 } = require("../controllers/auth.controller")
 const { authMiddleware } = require("../middlewares/auth.middleware")
 const { authRateLimiter, refreshRateLimiter } = require("../middlewares/rateLimit.middleware")
 const { validate } = require("../middlewares/validate.middleware")
 const {
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
 } = require("../validators/auth.validator")
 
 const authRoutes = express.Router()
@@ -23,5 +27,7 @@ authRoutes.post("/refresh", refreshRateLimiter, refresh)
 authRoutes.post("/logout", refreshRateLimiter, logout)
 authRoutes.get("/me", authMiddleware, getMe)
 authRoutes.get("/verify-email", verifyEmail)
+authRoutes.post("/forgot-password", authRateLimiter, validate(forgotPasswordSchema), forgotPassword)
+authRoutes.post("/reset-password", authRateLimiter, validate(resetPasswordSchema), resetPassword)
 
 module.exports = { authRoutes }
