@@ -1,14 +1,27 @@
+const http = require("http")
+const { Server } = require("socket.io")
 const { app } = require("./app")
 const { connectDatabase, disconnectDatabase } = require("./config/db")
 const { env } = require("./config/env")
 const { logger } = require("./utils/logger")
+const { setupSocket } = require("./socket/handler")
 
 let server
+let io
 
 async function bootstrap() {
   await connectDatabase()
 
-  server = app.listen(env.PORT, () => {
+  server = http.createServer(app)
+  io = new Server(server, {
+    cors: {
+      origin: [env.CLIENT_URL, env.CORS_ORIGIN].filter(Boolean),
+      credentials: true,
+    },
+  })
+  setupSocket(io)
+
+  server.listen(env.PORT, () => {
     logger.info(`GroupHub API listening on port ${env.PORT}`)
   })
 
@@ -21,6 +34,7 @@ async function bootstrap() {
 async function shutdown(signal) {
   logger.info(`${signal} received, shutting down`)
 
+  if (io) io.close()
   if (server) {
     server.close(async () => {
       await disconnectDatabase()
