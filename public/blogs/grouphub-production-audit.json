@@ -1,0 +1,33 @@
+{
+  "slug": "grouphub-production-audit",
+  "title": "From Audit to Production: Hardening GroupHub",
+  "excerpt": "A comprehensive 43-item production readiness audit revealed critical issues hiding in plain sight. Here's how we fixed silent failures, added pagination, implemented password reset, and shipped real notifications.",
+  "date": { "$date": "2026-07-25T00:00:00.000Z" },
+  "createdAt": { "$date": "2026-07-25T10:00:00.000Z" },
+  "updatedAt": { "$date": "2026-07-25T10:00:00.000Z" },
+  "reading": { "minutes": 5, "words": 980 },
+  "content": {
+    "markdown": "Every codebase has blind spots — the things that work just well enough in development but crumble under real usage. GroupHub was no exception.\n\nAfter a comprehensive 43-item production readiness audit, we uncovered issues spanning authentication, error handling, UX, and infrastructure. Here's how we tackled them.\n\n## The Audit\n\nWe categorized every finding by severity: 7 critical, 8 high, 14 medium, and 14 low. The critical issues were alarming — registration returned a fake 201 even when the email already existed, email sending could crash the server on network failure, and the JWT middleware was missing its algorithm specifier.\n\n## Silent Failures → Hard Errors\n\nRegistration was the most deceptive bug. Users would submit the signup form, receive a 201 \"Account created\" response, but never actually get an account if the email was taken. The login page would then reject them with no explanation. Fixing this meant returning a proper 409 Conflict with a clear message.\n\nEmail sending was similarly fragile — a network blip during `fetch()` would bubble up as an unhandled promise rejection and crash the process. Every email call now lives inside a try/catch with a graceful console.error fallback.\n\n## Authentication Deep Clean\n\nThe `optionalAuthMiddleware` was verifying JWTs without specifying the algorithm. This is a known attack vector — an attacker could craft a token using the \"none\" algorithm and bypass verification entirely. The fix was a one-liner: `{ algorithms: [\"HS256\"] }`.\n\nPassword reset was a dead `#` link. We built the full flow: forgot-password form, tokenized email with a short-lived JWT, reset-password page with strength validation, and a security-conscious \"if an account exists\" message that doesn't reveal whether the email is registered.\n\n## Real-Time Notifications\n\nThe notification backend was fully built but the bell icon in the dashboard was purely decorative. We wired it up with an unread badge, a dropdown panel listing recent notifications, click-to-mark-read, a \"Mark all read\" button, and click-outside-to-close behavior.\n\n## Pagination\n\nThe backend already paginated projects, but the frontend was ignoring the `page` and `limit` parameters entirely. We added page state, a Pagination component with Previous/Next and ellipsis, and a \"Page X of Y (N total projects)\" display. Filters now reset to page 1 when changed.\n\n## What We Learned\n\nAudits are uncomfortable because they reveal how many things you've been walking past every day. But each fix compounds — the app is now more reliable, more secure, and more honest with its users than it was before."
+  },
+  "tags": [
+    { "name": "audit", "slug": "audit" },
+    { "name": "security", "slug": "security" },
+    { "name": "production", "slug": "production" },
+    { "name": "authentication", "slug": "authentication" }
+  ],
+  "categories": [
+    { "name": "engineering", "slug": "engineering" },
+    { "name": "security", "slug": "security" }
+  ],
+  "difficulty": "intermediate",
+  "status": "published",
+  "isFeatured": true,
+  "isPinned": false,
+  "revision": 1,
+  "lessons": [
+    "Always specify JWT algorithms explicitly",
+    "Wrap external API calls in try/catch — even ones that \"never fail\"",
+    "Registration should return 409 on duplicate, not fake 201",
+    "A backend can be feature-complete while the frontend is still showing a placeholder"
+  ]
+}
