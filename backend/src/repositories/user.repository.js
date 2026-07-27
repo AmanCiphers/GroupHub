@@ -18,6 +18,10 @@ async function findById(id) {
   return User.findById(id)
 }
 
+async function find(filter) {
+  return User.find(filter).lean()
+}
+
 async function markLogin(userId) {
   return User.findByIdAndUpdate(
     userId,
@@ -52,6 +56,7 @@ const userRepository = {
   create,
   findByEmail,
   findById,
+  find,
   markLogin,
   updateById,
 }

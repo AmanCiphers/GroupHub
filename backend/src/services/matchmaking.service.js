@@ -1,7 +1,7 @@
-const { Project } = require("../models/Project")
-const { User } = require("../models/User")
-const { ProjectMembership } = require("../models/ProjectMembership")
-const { ProjectRole } = require("../models/ProjectRole")
+const { userRepository } = require("../repositories/user.repository")
+const { projectRepository } = require("../repositories/project.repository")
+const { membershipRepository } = require("../repositories/membership.repository")
+const { roleRepository } = require("../repositories/role.repository")
 
 const stageValue = { idea: 1, research: 2, prototype: 3, mvp: 4, active: 5, completed: 6, paused: 2 }
 const experienceValue = { beginner: 1, intermediate: 2, advanced: 3, expert: 4 }
@@ -55,19 +55,15 @@ function computeUserScore(project, user) {
 }
 
 async function recommendProjects(userId, limit = 5) {
-  const user = await User.findById(userId)
+  const user = await userRepository.findById(userId)
   if (!user) return []
 
-  const projects = await Project.find({
+  const projects = await projectRepository.find({
     status: { $in: ["recruiting", "active"] },
     visibility: "public",
-    ownerId: { $ne: user._id },
-  }).lean()
+  })
 
-  const membershipProjectIds = await ProjectMembership.find({
-    userId: user._id,
-    status: "active",
-  }).distinct("projectId")
+  const membershipProjectIds = await membershipRepository.findProjectIdsByUser(userId)
   const excluded = new Set(membershipProjectIds.map((id) => String(id)))
 
   const scored = []
@@ -75,10 +71,7 @@ async function recommendProjects(userId, limit = 5) {
     if (excluded.has(String(project._id))) continue
     const score = computeProjectScore(user, project)
     if (score <= 0) continue
-    const openRoles = await ProjectRole.countDocuments({
-      projectId: project._id,
-      status: "open",
-    })
+    const openRoles = await roleRepository.countOpenByProjectId(project._id)
     scored.push({
       id: String(project._id),
       title: project.title,
@@ -97,20 +90,17 @@ async function recommendProjects(userId, limit = 5) {
 }
 
 async function recommendMembers(projectId, limit = 10) {
-  const project = await Project.findById(projectId).lean()
+  const project = await projectRepository.findById(projectId)
   if (!project) return []
 
-  const existingUserIds = await ProjectMembership.find({
-    projectId,
-    status: "active",
-  }).distinct("userId")
+  const existingUserIds = await membershipRepository.findUserIdsByProject(projectId)
   const excluded = new Set(existingUserIds.map((id) => String(id)))
   excluded.add(String(project.ownerId))
 
-  const users = await User.find({
+  const users = await userRepository.find({
     _id: { $nin: Array.from(excluded) },
     status: "active",
-  }).lean()
+  })
 
   const scored = []
   for (const user of users) {

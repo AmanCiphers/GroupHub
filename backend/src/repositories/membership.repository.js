@@ -27,12 +27,22 @@ async function countByUser(userId) {
   return ProjectMembership.countDocuments({ userId, status: "active" })
 }
 
+async function findProjectIdsByUser(userId) {
+  return ProjectMembership.find({ userId, status: "active" }).distinct("projectId")
+}
+
+async function findUserIdsByProject(projectId) {
+  return ProjectMembership.find({ projectId, status: "active" }).distinct("userId")
+}
+
 const membershipRepository = {
   countByUser,
   create,
   findActive,
   findByProject,
   findByUser,
+  findProjectIdsByUser,
+  findUserIdsByProject,
 }
 
 module.exports = { membershipRepository }

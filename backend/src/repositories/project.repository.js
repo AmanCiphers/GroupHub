@@ -26,6 +26,10 @@ async function create(data) {
   return Project.create(data)
 }
 
+async function find(filter) {
+  return Project.find(filter).lean()
+}
+
 async function findById(id) {
   if (!mongoose.Types.ObjectId.isValid(id)) return null
   return Project.findById(id)
@@ -45,7 +49,7 @@ async function list(query, pagination) {
   const sort = query.q ? { score: { $meta: "textScore" } } : { createdAt: -1 }
 
   const [items, total] = await Promise.all([
-    Project.find(filter).sort(sort).skip(pagination.skip).limit(pagination.limit),
+    Project.find(filter).sort(sort).skip(pagination.skip).limit(pagination.limit).populate("ownerId", "fullName"),
     Project.countDocuments(filter),
   ])
 
@@ -74,6 +78,7 @@ async function findOwnedIds(ownerId) {
 const projectRepository = {
   countOwnedActive,
   create,
+  find,
   findById,
   findByIdOrSlug,
   findOwned,

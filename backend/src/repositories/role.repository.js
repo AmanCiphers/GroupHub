@@ -18,6 +18,10 @@ async function findByProject(projectId) {
   return ProjectRole.find({ projectId }).sort({ createdAt: 1 })
 }
 
+async function countOpenByProjectId(projectId) {
+  return ProjectRole.countDocuments({ projectId, status: "open" })
+}
+
 async function countOpenByOwnerProjectIds(projectIds) {
   return ProjectRole.countDocuments({
     projectId: { $in: projectIds },
@@ -47,6 +51,7 @@ async function updateById(id, data) {
 
 const roleRepository = {
   countOpenByOwnerProjectIds,
+  countOpenByProjectId,
   create,
   createMany,
   findById,
