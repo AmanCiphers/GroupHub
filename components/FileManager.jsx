@@ -4,6 +4,7 @@ import { apiFetch, getStoredUser } from "@/lib/api"
 
 const MAX_SIZE_MB = 20
 const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024
+const PROJECT_MAX_MB = 500
 
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
@@ -17,6 +18,7 @@ function formatDate(date) {
 
 export default function FileManager({ projectId }) {
   const [files, setFiles] = useState([])
+  const [storage, setStorage] = useState({ used: 0, limit: PROJECT_MAX_MB * 1024 * 1024 })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
@@ -26,18 +28,30 @@ export default function FileManager({ projectId }) {
   const loadFiles = useCallback(() => {
     if (!projectId) return
     apiFetch(`/api/v1/files/${projectId}`)
-      .then((p) => setFiles(p.data.files || []))
+      .then((p) => {
+        setFiles(p.data.files || [])
+        if (p.data.storage) setStorage(p.data.storage)
+      })
       .catch(() => setError("Failed to load files"))
       .finally(() => setLoading(false))
   }, [projectId])
 
   useEffect(() => { loadFiles() }, [loadFiles])
 
+  const usedMB = storage.used / (1024 * 1024)
+  const limitMB = storage.limit / (1024 * 1024)
+  const percent = Math.min((storage.used / storage.limit) * 100, 100)
+
   async function handleUpload(e) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > MAX_SIZE_BYTES) {
       setError(`File exceeds ${MAX_SIZE_MB} MB limit`)
+      e.target.value = ""
+      return
+    }
+    if (storage.used + file.size > storage.limit) {
+      setError(`Project storage limit of ${PROJECT_MAX_MB} MB exceeded`)
       e.target.value = ""
       return
     }
@@ -86,6 +100,19 @@ export default function FileManager({ projectId }) {
           {uploading ? "Uploading..." : "Upload"}
         </button>
         <input ref={inputRef} type="file" onChange={handleUpload} className="hidden" />
+      </div>
+
+      <div className="border-b border-[#d9d8d2] bg-white px-5 py-3">
+        <div className="flex items-center justify-between text-xs font-semibold text-[#77766f]">
+          <span>Storage</span>
+          <span>{formatSize(storage.used)} / {formatSize(storage.limit)}</span>
+        </div>
+        <div className="mt-1.5 h-2 w-full bg-[#efeee8]">
+          <div
+            className={`h-full transition-all ${percent > 90 ? "bg-red-500" : percent > 70 ? "bg-amber-500" : "bg-[#171717]"}`}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
       </div>
 
       {error && (
