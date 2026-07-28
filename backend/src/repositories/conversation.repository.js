@@ -4,6 +4,17 @@ async function findById(id) {
   return Conversation.findById(id)
 }
 
+async function isParticipant(conversationId, userId) {
+  const conversation = await Conversation.findById(conversationId).select("type participants projectId").lean()
+  if (!conversation) return false
+  if (conversation.type === "dm") {
+    return conversation.participants.some((p) => String(p) === String(userId))
+  }
+  const membership = require("mongoose").model("ProjectMembership")
+  const active = await membership.findOne({ projectId: conversation.projectId, userId, status: "active" }).select("_id").lean()
+  return !!active
+}
+
 async function findByProject(projectId) {
   return Conversation.findOne({ projectId, type: "project" })
 }
@@ -41,6 +52,7 @@ const conversationRepository = {
   findByParticipant,
   create,
   updateLastMessage,
+  isParticipant,
 }
 
 module.exports = { conversationRepository }

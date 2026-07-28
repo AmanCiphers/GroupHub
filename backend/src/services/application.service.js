@@ -43,13 +43,26 @@ async function applyToRole(roleId, applicantId, payload) {
     throw new ApiError(400, "This role is already full")
   }
 
-  const application = await applicationRepository.create({
-    projectId: project._id,
-    roleId: role._id,
-    applicantId,
-    message: payload.message.trim(),
-    availabilityHoursPerWeek: payload.availabilityHoursPerWeek || 0,
-  })
+  const isMember = await membershipRepository.findActive(project._id, applicantId)
+  if (isMember) {
+    throw new ApiError(400, "You are already a member of this project")
+  }
+
+  let application
+  try {
+    application = await applicationRepository.create({
+      projectId: project._id,
+      roleId: role._id,
+      applicantId,
+      message: payload.message.trim(),
+      availabilityHoursPerWeek: payload.availabilityHoursPerWeek || 0,
+    })
+  } catch (err) {
+    if (err.code === 11000) {
+      throw new ApiError(400, "You already applied to this role")
+    }
+    throw err
+  }
 
   await activityService.record({
     actorId: applicantId,

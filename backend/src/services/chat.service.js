@@ -33,6 +33,10 @@ async function getMessages(conversationId, limit, before) {
 }
 
 async function sendMessage(conversationId, senderId, text) {
+  const isParticipant = await conversationRepository.isParticipant(conversationId, senderId)
+  if (!isParticipant) {
+    throw Object.assign(new Error("Not a participant in this conversation"), { status: 403 })
+  }
   const message = await messageRepository.create({
     conversationId,
     senderId,

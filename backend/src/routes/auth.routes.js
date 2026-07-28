@@ -6,6 +6,7 @@ const {
   logout,
   refresh,
   register,
+  resendVerification,
   resetPassword,
   verifyEmail,
 } = require("../controllers/auth.controller")
@@ -27,6 +28,7 @@ authRoutes.post("/refresh", refreshRateLimiter, refresh)
 authRoutes.post("/logout", refreshRateLimiter, logout)
 authRoutes.get("/me", authMiddleware, getMe)
 authRoutes.get("/verify-email", verifyEmail)
+authRoutes.post("/resend-verification", authRateLimiter, resendVerification)
 authRoutes.post("/forgot-password", authRateLimiter, validate(forgotPasswordSchema), forgotPassword)
 authRoutes.post("/reset-password", authRateLimiter, validate(resetPasswordSchema), resetPassword)
 

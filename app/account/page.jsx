@@ -5,11 +5,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight,
+  AtSign,
   Github,
   Globe,
   Lock,
   LogOut,
   Mail,
+  MailCheck,
   MapPin,
   Save,
   User,
@@ -41,6 +43,7 @@ export default function AccountPage() {
   const [saved, setSaved] = useState(false)
   const [skillsPills, setSkillsPills] = useState([])
   const [interestsPills, setInterestsPills] = useState([])
+  const [registeredEmail, setRegisteredEmail] = useState("")
   const router = useRouter()
 
   const loadProfile = useCallback(async () => {
@@ -79,6 +82,7 @@ export default function AccountPage() {
         }
       : {
           fullName: formData.get("fullName"),
+          username: formData.get("username"),
           email: formData.get("email"),
           password: formData.get("password"),
           confirmPassword: formData.get("confirmPassword"),
@@ -95,7 +99,11 @@ export default function AccountPage() {
       )
 
       setAuthSession(payload.data)
-      router.push("/dashboard")
+      if (isLogin) {
+        router.push("/dashboard")
+      } else {
+        setRegisteredEmail(body.email)
+      }
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -198,6 +206,43 @@ export default function AccountPage() {
             </div>
           </div>
         </section>
+      </div>
+    )
+  }
+
+  if (registeredEmail) {
+    return (
+      <div className="min-h-screen bg-[#f7f7f3] text-[#171717] flex items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-[#171717]">
+            <MailCheck className="size-8 text-white" />
+          </div>
+          <h1 className="mt-6 text-3xl font-black leading-[1.1]">Check your inbox</h1>
+          <p className="mt-4 text-lg font-semibold text-[#55544f] leading-relaxed">
+            We sent a verification link to{" "}
+            <span className="text-[#171717] font-black">{registeredEmail}</span>.
+            Click the link to activate your account.
+          </p>
+          <div className="mt-8 border border-[#d9d8d2] bg-[#fbfbfa] p-5 text-left">
+            <p className="text-sm font-black uppercase tracking-[0.12em] text-[#77766f]">What happens next?</p>
+            <ol className="mt-4 space-y-3">
+              {["Verify your email address", "Set up your profile with skills and interests", "Discover projects or create your own"].map((step, i) => (
+                <li key={step} className="flex items-start gap-3 text-sm font-semibold text-[#55544f]">
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#171717] text-xs font-black text-white">{i + 1}</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div className="mt-6 flex flex-col items-center gap-3">
+            <button
+              onClick={() => { setRegisteredEmail(""); setError(""); setIsLogin(true) }}
+              className="text-sm font-black underline underline-offset-4 text-[#55544f] hover:text-[#171717]"
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -387,7 +432,7 @@ export default function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f3] text-[#171717]">
+    <div className=" bg-[#f7f7f3] text-[#171717]">
       <section className="grid min-h-[calc(100vh-73px)] lg:grid-cols-[0.95fr_1.05fr]">
         <div className="flex items-center bg-[#2f2f2d] px-6 py-16 text-white sm:px-10 lg:px-20 xl:px-28">
           <div className="max-w-xl">
@@ -444,7 +489,10 @@ export default function AccountPage() {
 
               <form className="space-y-4" onSubmit={handleAuth}>
                 {!isLogin && (
-                  <Field icon={User} id="fullName" name="fullName" label="Full name" placeholder="John Doe" />
+                  <>
+                    <Field icon={User} id="fullName" name="fullName" label="Full name" placeholder="John Doe" />
+                    <Field icon={AtSign} id="username" name="username" label="Username" placeholder="johndoe" />
+                  </>
                 )}
                 <Field icon={Mail} id="email" name="email" label="Email" placeholder="you@example.com" type="email" />
                 <Field icon={Lock} id="password" name="password" label="Password" placeholder="Password" type="password" />

@@ -1,6 +1,22 @@
 const { env } = require("../config/env")
 
-async function sendVerificationEmail({ to, token }) {
+function emailLayout(body) {
+  return [
+    '<div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:0 auto;padding:40px 24px">',
+    '<div style="border:1px solid #e5e3dc;padding:32px;background:#fbfbfa">',
+    '<p style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:0.18em;color:#62615d;margin:0 0 4px">GroupHub</p>',
+    body,
+    '</div>',
+    '<p style="font-size:12px;color:#999890;margin-top:16px;text-align:center">GroupHub &middot; Build what you couldn&apos;t alone</p>',
+    '</div>',
+  ].join("")
+}
+
+function button(href, label) {
+  return `<a href="${href}" style="display:inline-block;margin:20px 0 16px;padding:12px 28px;background:#171717;color:#fff;text-decoration:none;font-weight:700;font-size:14px;border-radius:4px">${label}</a>`
+}
+
+async function sendVerificationEmail({ to, token, fullName }) {
   const clientUrl = env.CLIENT_URL || "http://localhost:3000"
   const verifyUrl = `${clientUrl}/verify-email?token=${token}`
 
@@ -19,15 +35,13 @@ async function sendVerificationEmail({ to, token }) {
       body: JSON.stringify({
         from: env.EMAIL_FROM || "noreply@grouphub.app",
         to,
-        subject: "Verify your email — GroupHub",
-        html: [
-          '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">',
-          `<h1 style="font-size:24px;margin:0 0 8px">Verify your email</h1>`,
-          `<p style="color:#555;line-height:1.5">Click the button below to verify your email address and start using GroupHub.</p>`,
-          `<a href="${verifyUrl}" style="display:inline-block;margin:24px 0;padding:12px 24px;background:#171717;color:#fff;text-decoration:none;font-weight:700;font-size:14px">Verify email</a>`,
-          `<p style="color:#999;font-size:13px">This link expires in 24 hours. If you didn't create an account, you can safely ignore this email.</p>`,
-          `</div>`,
-        ].join(""),
+        subject: `Welcome to GroupHub, ${fullName}! Verify your email`,
+        html: emailLayout([
+          `<h1 style="font-size:22px;margin:16px 0 8px;color:#171717">Welcome aboard, ${fullName}!</h1>`,
+          `<p style="color:#55544f;line-height:1.6;margin:0 0 4px">You're one click away from joining a community of builders. Click the button below to verify your email and start collaborating.</p>`,
+          button(verifyUrl, "Verify your email"),
+          `<p style="color:#999890;font-size:13px;margin:0">This link expires in 24 hours. If you didn't sign up for GroupHub, you can safely ignore this email.</p>`,
+        ].join("")),
       }),
     })
 
@@ -60,14 +74,12 @@ async function sendPasswordResetEmail({ to, token }) {
         from: env.EMAIL_FROM || "noreply@grouphub.app",
         to,
         subject: "Reset your password — GroupHub",
-        html: [
-          '<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">',
-          `<h1 style="font-size:24px;margin:0 0 8px">Reset your password</h1>`,
-          `<p style="color:#555;line-height:1.5">Click the button below to set a new password for your GroupHub account. This link expires in 1 hour.</p>`,
-          `<a href="${resetUrl}" style="display:inline-block;margin:24px 0;padding:12px 24px;background:#171717;color:#fff;text-decoration:none;font-weight:700;font-size:14px">Reset password</a>`,
-          `<p style="color:#999;font-size:13px">If you didn't request a password reset, you can safely ignore this email.</p>`,
-          `</div>`,
-        ].join(""),
+        html: emailLayout([
+          '<h1 style="font-size:22px;margin:16px 0 8px;color:#171717">Reset your password</h1>',
+          '<p style="color:#55544f;line-height:1.6;margin:0 0 4px">We received a request to reset the password for your GroupHub account. Click the button below to set a new one.</p>',
+          button(resetUrl, "Reset password"),
+          '<p style="color:#999890;font-size:13px;margin:0">This link expires in 1 hour. If you didn\'t request a password reset, you can safely ignore this email.</p>',
+        ].join("")),
       }),
     })
 

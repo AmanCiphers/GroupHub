@@ -35,6 +35,10 @@ async function findUserIdsByProject(projectId) {
   return ProjectMembership.find({ projectId, status: "active" }).distinct("userId")
 }
 
+async function updateById(id, data) {
+  return ProjectMembership.findByIdAndUpdate(id, data, { new: true, runValidators: true })
+}
+
 const membershipRepository = {
   countByUser,
   create,
@@ -43,6 +47,7 @@ const membershipRepository = {
   findByUser,
   findProjectIdsByUser,
   findUserIdsByProject,
+  updateById,
 }
 
 module.exports = { membershipRepository }

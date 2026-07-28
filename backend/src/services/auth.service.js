@@ -37,6 +37,11 @@ async function register(payload, req) {
     throw new ApiError(409, "An account with this email already exists")
   }
 
+  const existingUsername = await userRepository.findByUsername(payload.username)
+  if (existingUsername) {
+    throw new ApiError(409, "This username is already taken")
+  }
+
   const passwordHash = await bcrypt.hash(
     payload.password,
     env.BCRYPT_SALT_ROUNDS
@@ -45,19 +50,16 @@ async function register(payload, req) {
   const user = await userRepository.create({
     email,
     fullName: payload.fullName.trim(),
+    username: payload.username.trim().toLowerCase(),
     passwordHash,
+    status: "pending",
+    emailVerified: false,
   })
 
   const verificationToken = tokenService.signEmailVerificationToken(user.id)
-  emailService.sendVerificationEmail({ to: email, token: verificationToken })
-
-  const accessToken = tokenService.signAccessToken(user)
-  const refresh = await tokenService.createRefreshToken(user, req)
+  emailService.sendVerificationEmail({ to: email, token: verificationToken, fullName: payload.fullName.trim() })
 
   return {
-    accessToken,
-    refreshToken: refresh.token,
-    refreshExpiresAt: refresh.expiresAt,
     user: toPublicUser(user),
   }
 }
@@ -70,6 +72,10 @@ async function login(payload, req) {
 
   if (!user) {
     throw new ApiError(401, "Invalid email or password")
+  }
+
+  if (user.status === "pending") {
+    throw new ApiError(403, "Please verify your email before signing in. Check your inbox for the verification link.")
   }
 
   if (user.status !== "active") {
@@ -151,8 +157,8 @@ async function verifyEmail(token) {
     throw new ApiError(400, "Invalid verification link")
   }
 
-  if (user.emailVerified) {
-    return toPublicUser(user)
+  if (user.emailVerified && user.status === "active") {
+    return user
   }
 
   const updated = await userRepository.updateById(userId, {
@@ -160,7 +166,23 @@ async function verifyEmail(token) {
     status: "active",
   })
 
-  return toPublicUser(updated)
+  return updated
+}
+
+async function resendVerificationEmail(email) {
+  const normalized = normalizeEmail(email)
+  const user = await userRepository.findByEmail(normalized)
+
+  if (!user) {
+    return
+  }
+
+  if (user.emailVerified) {
+    return
+  }
+
+  const verificationToken = tokenService.signEmailVerificationToken(user.id)
+  emailService.sendVerificationEmail({ to: normalized, token: verificationToken, fullName: user.fullName })
 }
 
 async function forgotPassword(payload) {
@@ -199,6 +221,7 @@ const authService = {
   logout,
   refresh,
   register,
+  resendVerificationEmail,
   resetPassword,
   toPublicUser,
   verifyEmail,

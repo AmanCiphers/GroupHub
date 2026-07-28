@@ -74,17 +74,17 @@ function normalizeProjectPayload(payload) {
     description: payload.description.trim(),
     category: payload.category.trim(),
     stage: payload.stage,
-    commitmentHoursPerWeek: payload.commitmentHoursPerWeek || 0,
-    commitmentLabel: payload.commitmentLabel?.trim() || "",
-    locationType: payload.locationType || "remote",
-    location: payload.location?.trim() || "Remote",
-    status: payload.status || "recruiting",
-    visibility: payload.visibility || "public",
-    skills: normalizeStringList(payload.skills || []),
-    tags: normalizeStringList(payload.tags || []),
-    teamSizeTarget: payload.teamSizeTarget || 1,
-    progressPercent: payload.progressPercent || 0,
-    nextMilestone: payload.nextMilestone?.trim() || "",
+    commitmentHoursPerWeek: payload.commitmentHoursPerWeek ?? 0,
+    commitmentLabel: payload.commitmentLabel?.trim() ?? "",
+    locationType: payload.locationType ?? "remote",
+    location: payload.location?.trim() ?? "Remote",
+    status: payload.status ?? "recruiting",
+    visibility: payload.visibility ?? "public",
+    skills: normalizeStringList(payload.skills ?? []),
+    tags: normalizeStringList(payload.tags ?? []),
+    teamSizeTarget: payload.teamSizeTarget ?? 1,
+    progressPercent: payload.progressPercent ?? 0,
+    nextMilestone: payload.nextMilestone?.trim() ?? "",
   }
 }
 
@@ -152,6 +152,12 @@ async function getProject(idOrSlug, currentUserId) {
   const project = await projectRepository.findByIdOrSlug(idOrSlug)
 
   if (!project || project.status === "archived") {
+    throw new ApiError(404, "Project not found")
+  }
+
+  const isOwner = currentUserId ? String(project.ownerId?._id || project.ownerId) === String(currentUserId) : false
+
+  if (project.visibility !== "public" && !isOwner) {
     throw new ApiError(404, "Project not found")
   }
 

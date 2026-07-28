@@ -1,15 +1,17 @@
 const mongoose = require("mongoose")
 const { Project } = require("../models/Project")
 
+const BLOCKED_STATUSES = ["archived"]
+
 function buildProjectFilter(query = {}) {
   const filter = {
     visibility: "public",
-    status: { $ne: "archived" },
+    status: { $nin: BLOCKED_STATUSES },
   }
 
   if (query.category) filter.category = query.category
   if (query.stage) filter.stage = query.stage
-  if (query.status) filter.status = query.status
+  if (query.status && !BLOCKED_STATUSES.includes(query.status)) filter.status = query.status
   if (query.skill) filter.skills = query.skill
 
   if (query.q) {

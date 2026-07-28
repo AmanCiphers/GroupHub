@@ -8,12 +8,12 @@ const { normalizeStringList } = require("../utils/normalize")
 function normalizeRolePayload(payload) {
   return {
     title: payload.title.trim(),
-    description: payload.description?.trim() || "",
-    requiredSkills: normalizeStringList(payload.requiredSkills || []),
-    preferredSkills: normalizeStringList(payload.preferredSkills || []),
-    slotsTotal: payload.slotsTotal || 1,
-    workloadHoursPerWeek: payload.workloadHoursPerWeek || 0,
-    status: payload.status || "open",
+    description: payload.description?.trim() ?? "",
+    requiredSkills: normalizeStringList(payload.requiredSkills ?? []),
+    preferredSkills: normalizeStringList(payload.preferredSkills ?? []),
+    slotsTotal: payload.slotsTotal ?? 1,
+    workloadHoursPerWeek: payload.workloadHoursPerWeek ?? 0,
+    status: payload.status ?? "open",
   }
 }
 

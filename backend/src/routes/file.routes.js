@@ -77,6 +77,9 @@ fileRoutes.delete(
     if (!file || String(file.projectId) !== req.params.projectId) {
       return res.status(404).json({ message: "File not found" })
     }
+    if (String(file.uploadedBy) !== String(req.user.id)) {
+      return res.status(403).json({ message: "Only the uploader can delete this file" })
+    }
     await uploadService.removeFile(file.cloudinaryPublicId).catch(() => {})
     await fileRepository.remove(req.params.fileId)
     res.json({ data: { success: true } })

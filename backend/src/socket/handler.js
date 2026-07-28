@@ -2,6 +2,7 @@ const cookie = require("cookie")
 const jwt = require("jsonwebtoken")
 const { env } = require("../config/env")
 const { chatService } = require("../services/chat.service")
+const { conversationRepository } = require("../repositories/conversation.repository")
 
 function extractToken(socket) {
   const fromAuth = socket.handshake.auth?.token || socket.handshake.query?.token
@@ -34,8 +35,11 @@ function setupSocket(io) {
   io.on("connection", (socket) => {
     socket.join(`user:${socket.userId}`)
 
-    socket.on("join:conversation", (conversationId) => {
-      socket.join(`conversation:${conversationId}`)
+    socket.on("join:conversation", async (conversationId) => {
+      const allowed = await conversationRepository.isParticipant(conversationId, socket.userId)
+      if (allowed) {
+        socket.join(`conversation:${conversationId}`)
+      }
     })
 
     socket.on("leave:conversation", (conversationId) => {

@@ -36,9 +36,28 @@ async function listProjectMembers(projectId, userId) {
   return members.map(serializeMembership)
 }
 
+async function leaveProject(projectId, userId) {
+  const membership = await membershipRepository.findActive(projectId, userId)
+  if (!membership) throw new ApiError(404, "Not a member of this project")
+  await membershipRepository.updateById(membership._id, { status: "left" })
+}
+
+async function removeMember(projectId, ownerId, targetUserId) {
+  const project = await projectRepository.findById(projectId)
+  if (!project) throw new ApiError(404, "Project not found")
+  if (String(project.ownerId) !== String(ownerId)) {
+    throw new ApiError(403, "Only the project owner can remove members")
+  }
+  const membership = await membershipRepository.findActive(projectId, targetUserId)
+  if (!membership) throw new ApiError(404, "Member not found in this project")
+  await membershipRepository.updateById(membership._id, { status: "removed" })
+}
+
 const membershipService = {
   isProjectMember,
   listProjectMembers,
+  leaveProject,
+  removeMember,
 }
 
 module.exports = { membershipService }

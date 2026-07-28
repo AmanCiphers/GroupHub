@@ -14,6 +14,10 @@ async function findByEmail(email, options = {}) {
   return query
 }
 
+async function findByUsername(username) {
+  return User.findOne({ username: username.trim().toLowerCase() })
+}
+
 async function findById(id) {
   return User.findById(id)
 }
@@ -55,6 +59,7 @@ async function updateById(userId, data) {
 const userRepository = {
   create,
   findByEmail,
+  findByUsername,
   findById,
   find,
   markLogin,

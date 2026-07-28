@@ -6,22 +6,14 @@ const { asyncHandler } = require("../utils/asyncHandler")
 const register = asyncHandler(async (req, res) => {
   const result = await authService.register(req.validated.body, req)
 
-  if (result.user) {
-    tokenService.setRefreshCookie(res, result.refreshToken, result.refreshExpiresAt, req)
-    tokenService.setAccessTokenCookie(res, result.accessToken, req)
-
-    apiResponse(
-      res,
-      201,
-      {
-        user: result.user,
-      },
-      "Account created"
-    )
-    return
-  }
-
-  apiResponse(res, 201, null, "Registration successful")
+  apiResponse(
+    res,
+    201,
+    {
+      user: result.user,
+    },
+    "Account created. Check your email for a verification link."
+  )
 })
 
 const login = asyncHandler(async (req, res) => {
@@ -77,8 +69,24 @@ const verifyEmail = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Verification token required")
   }
 
-  const user = await authService.verifyEmail(token)
-  apiResponse(res, 200, { user }, "Email verified successfully")
+  const verifiedUser = await authService.verifyEmail(token)
+
+  const accessToken = tokenService.signAccessToken(verifiedUser)
+  const refresh = await tokenService.createRefreshToken(verifiedUser, req)
+
+  tokenService.setRefreshCookie(res, refresh.token, refresh.expiresAt, req)
+  tokenService.setAccessTokenCookie(res, accessToken, req)
+
+  apiResponse(res, 200, { user: verifiedUser }, "Email verified successfully")
+})
+
+const resendVerification = asyncHandler(async (req, res) => {
+  const { email } = req.body
+  if (!email) {
+    throw new ApiError(400, "Email is required")
+  }
+  await authService.resendVerificationEmail(email)
+  apiResponse(res, 200, null, "If the account exists and is not verified, a new verification link has been sent.")
 })
 
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -98,6 +106,7 @@ module.exports = {
   logout,
   refresh,
   register,
+  resendVerification,
   resetPassword,
   verifyEmail,
 }
