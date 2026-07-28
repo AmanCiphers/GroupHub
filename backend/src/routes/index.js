@@ -1,5 +1,6 @@
 const express = require("express")
 const { activityRoutes } = require("./activity.routes")
+const { aiRoutes } = require("./ai.routes")
 const { applicationRoutes } = require("./application.routes")
 const { authRoutes } = require("./auth.routes")
 const { chatRoutes } = require("./chat.routes")
@@ -50,6 +51,7 @@ apiRoutes.get("/", (_req, res) => {
   })
 })
 
+apiRoutes.use("/ai", aiRoutes)
 apiRoutes.use("/activity", activityRoutes)
 apiRoutes.use("/applications", applicationRoutes)
 apiRoutes.use("/auth", authRoutes)

@@ -11,6 +11,7 @@ import {
   Plus,
   Save,
   Settings,
+  Sparkles,
   X,
 } from "lucide-react"
 import { apiFetch, getStoredUser } from "@/lib/api"
@@ -105,6 +106,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [rewriting, setRewriting] = useState(false)
+  const descRef = useRef(null)
 
   const [userSkills, setUserSkills] = useState([])
   const [skillsSaving, setSkillsSaving] = useState(false)
@@ -114,6 +117,8 @@ export default function DashboardPage() {
 
   const [rolePills, setRolePills] = useState([])
   const [skillPills, setSkillPills] = useState([])
+  const [suggestedSkills, setSuggestedSkills] = useState([])
+  const [suggestedRoles, setSuggestedRoles] = useState([])
   const [categories, setCategories] = useState([])
   const [availableRoles, setAvailableRoles] = useState([])
 
@@ -266,6 +271,23 @@ export default function DashboardPage() {
     }
   }
 
+  const handleRewrite = async () => {
+    const textarea = descRef.current
+    if (!textarea || !textarea.value.trim() || rewriting) return
+    setRewriting(true)
+    try {
+      const payload = await apiFetch("/api/v1/ai/rewrite", {
+        method: "POST",
+        body: JSON.stringify({ text: textarea.value.trim() }),
+      })
+      textarea.value = payload.data.description
+      setSuggestedSkills(payload.data.skills || [])
+      setSuggestedRoles(payload.data.roles || [])
+    } catch { } finally {
+      setRewriting(false)
+    }
+  }
+
   const handleReviewApplication = async (appId, status) => {
     setError("")
     try {
@@ -412,6 +434,8 @@ export default function DashboardPage() {
                 setError("")
                 setRolePills([])
                 setSkillPills([])
+                setSuggestedSkills([])
+                setSuggestedRoles([])
                 setShowNewProject(true)
               }}
               className="inline-flex h-11 items-center gap-2 border border-[#171717] bg-[#171717] px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-[#171717]"
@@ -806,16 +830,57 @@ export default function DashboardPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-black">Description</label>
-                <textarea name="description" rows={3} className="mt-1 min-h-24 w-full border border-[#d9d8d2] bg-white p-3 font-semibold outline-none focus:border-[#171717]" placeholder="What are you building?" required />
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-black">Description</label>
+                  <button
+                    type="button"
+                    onClick={handleRewrite}
+                    disabled={rewriting}
+                    className="inline-flex items-center gap-1.5 text-xs font-black text-[#77766f] hover:text-[#171717] disabled:opacity-40"
+                  >
+                    <Sparkles className="size-3.5" />
+                    {rewriting ? "Rewriting..." : "Rewrite with AI"}
+                  </button>
+                </div>
+                <textarea ref={descRef} name="description" rows={3} className="mt-1 min-h-24 w-full border border-[#d9d8d2] bg-white p-3 font-semibold outline-none focus:border-[#171717]" placeholder="What are you building?" required />
               </div>
               <div>
                 <label className="text-sm font-black">Technologies &amp; skills</label>
                 <PillInput values={skillPills} onChange={setSkillPills} placeholder="Type a skill and press Enter" />
+                {suggestedSkills.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="text-xs font-semibold text-[#999890] mr-1 self-center">Suggestions:</span>
+                    {suggestedSkills.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => { if (!skillPills.includes(s)) setSkillPills([...skillPills, s]) }}
+                        className="border border-dashed border-[#d9d8d2] px-2 py-0.5 text-xs font-semibold text-[#55544f] hover:border-[#171717] hover:text-[#171717] transition"
+                      >
+                        + {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-sm font-black">Open roles</label>
                 <PillInput values={rolePills} onChange={setRolePills} placeholder="Type to search roles..." suggestions={availableRoles} />
+                {suggestedRoles.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="text-xs font-semibold text-[#999890] mr-1 self-center">Suggestions:</span>
+                    {suggestedRoles.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => { if (!rolePills.includes(r)) setRolePills([...rolePills, r]) }}
+                        className="border border-dashed border-[#d9d8d2] px-2 py-0.5 text-xs font-semibold text-[#55544f] hover:border-[#171717] hover:text-[#171717] transition"
+                      >
+                        + {r}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <p className="mt-1 text-xs font-semibold text-[#77766f]">Each role gets 1 slot. Add multiple if needed.</p>
               </div>
               <div className="flex gap-4">

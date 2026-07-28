@@ -2,6 +2,7 @@ const { projectRepository } = require("../repositories/project.repository")
 const { roleRepository } = require("../repositories/role.repository")
 const { membershipRepository } = require("../repositories/membership.repository")
 const { savedProjectRepository } = require("../repositories/savedProject.repository")
+const { tagRepository } = require("../repositories/tag.repository")
 const { activityService } = require("./activity.service")
 const { ApiError } = require("../utils/ApiError")
 const { getPagination } = require("../utils/pagination")
@@ -117,6 +118,9 @@ async function createProject(ownerId, payload) {
     roleTitle: "Owner",
     permissions: ["view", "comment", "manage_roles", "manage_applications", "manage_project"],
   })
+
+  tagRepository.upsertMany(projectData.skills, "skill").catch(() => {})
+  tagRepository.upsertMany(rolePayloads.map((r) => r.title), "role").catch(() => {})
 
   await activityService.record({
     actorId: ownerId,
