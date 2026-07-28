@@ -1,5 +1,7 @@
 const { taskRepository } = require("../repositories/task.repository")
 const { projectRepository } = require("../repositories/project.repository")
+const { emailService } = require("./email.service")
+const { userRepository } = require("../repositories/user.repository")
 const { ApiError } = require("../utils/ApiError")
 
 function serializeTask(task) {
@@ -79,6 +81,23 @@ async function createTask(projectId, userId, payload) {
     dueDate: payload.dueDate || null,
   })
   await recalcProgress(projectId)
+
+  if (!isOpen && payload.assigneeId) {
+    const [assignee, project] = await Promise.all([
+      userRepository.findById(payload.assigneeId),
+      projectRepository.findById(projectId),
+    ])
+    if (assignee) {
+      emailService.sendTaskAssignedEmail({
+        to: assignee.email,
+        assigneeName: assignee.fullName,
+        taskTitle: task.title,
+        projectTitle: project?.title || "Project",
+        projectId,
+      })
+    }
+  }
+
   return serializeTask(task)
 }
 
@@ -133,6 +152,21 @@ async function updateTask(taskId, userId, payload) {
 
   const updated = await taskRepository.updateById(taskId, { status: payload.status })
   await recalcProgress(task.projectId)
+
+  if (payload.status === "needs_review") {
+    userRepository.findById(project.ownerId).then((owner) => {
+      if (owner) {
+        emailService.sendTaskNeedsReviewEmail({
+          to: owner.email,
+          ownerName: owner.fullName,
+          taskTitle: task.title,
+          projectTitle: project.title,
+          projectId: String(project._id),
+        })
+      }
+    })
+  }
+
   return serializeTask(updated)
 }
 
@@ -156,6 +190,21 @@ async function claimTask(taskId, userId) {
 
   const updated = await taskRepository.updateById(taskId, { assigneeId: userId })
   await recalcProgress(task.projectId)
+
+  const [assignee, project] = await Promise.all([
+    userRepository.findById(userId),
+    projectRepository.findById(task.projectId),
+  ])
+  if (assignee) {
+    emailService.sendTaskAssignedEmail({
+      to: assignee.email,
+      assigneeName: assignee.fullName,
+      taskTitle: task.title,
+      projectTitle: project?.title || "Project",
+      projectId: task.projectId,
+    })
+  }
+
   return serializeTask(updated)
 }
 

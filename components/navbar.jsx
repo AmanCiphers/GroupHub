@@ -58,12 +58,6 @@ export function Navbar() {
 
             <div className="hidden min-h-24 items-center gap-8 bg-[#fbfbfa] px-10 text-[#171717] xl:flex">
               <Link
-                href="/inbox"
-                className="text-lg font-medium transition-colors hover:text-[#62615d]"
-              >
-                Messages
-              </Link>
-              <Link
                 href="/account"
                 className="text-lg font-medium transition-colors hover:text-[#62615d]"
               >
@@ -150,7 +144,6 @@ function MobileMenu({ hiddenClass }) {
 
   const links = [
     ...navLinks,
-    { href: "/inbox", label: "Messages" },
     { href: "/account", label: "Account" },
     { href: "/dashboard", label: "Dashboard" },
   ]

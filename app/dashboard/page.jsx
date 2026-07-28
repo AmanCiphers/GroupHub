@@ -638,6 +638,18 @@ export default function DashboardPage() {
           </div>
 
           <aside className="space-y-6">
+            <Link href="/inbox" className="block border border-[#d9d8d2] bg-[#fbfbfa] p-5 transition hover:border-[#171717]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black uppercase tracking-[0.14em] text-[#77766f]">Messages</p>
+                  <p className="mt-2 text-lg font-black">View your conversations</p>
+                </div>
+                <div className="flex size-11 items-center justify-center bg-[#2f2f2d] text-white">
+                  <MessageSquare className="size-5" />
+                </div>
+              </div>
+            </Link>
+
             <div className="border border-[#d9d8d2] bg-[#fbfbfa] p-5">
               <h2 className="text-xl font-black">Today&apos;s Activity</h2>
               <div className="mt-5 grid gap-4">

@@ -11,7 +11,6 @@ export default function ChatRoom({ conversationId }) {
   const [sending, setSending] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
-  const initialLoad = useRef(true)
   const user = getStoredUser()
 
   useEffect(() => {
@@ -24,7 +23,6 @@ export default function ChatRoom({ conversationId }) {
     apiFetch(`/api/v1/chat/conversations/${conversationId}/messages`)
       .then((p) => {
         setMessages(p.data.messages || [])
-        initialLoad.current = false
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -45,11 +43,7 @@ export default function ChatRoom({ conversationId }) {
     }
 
     const onNewMessage = (msg) => {
-      setMessages((prev) => {
-        const updated = [msg, ...prev]
-        requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }))
-        return updated
-      })
+      setMessages((prev) => [msg, ...prev])
     }
     socket.on("message:new", onNewMessage)
     socket.emit("message:markRead", { conversationId })
@@ -59,12 +53,6 @@ export default function ChatRoom({ conversationId }) {
       socket.emit("leave:conversation", conversationId)
     }
   }, [conversationId, user])
-
-  useEffect(() => {
-    if (!initialLoad.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-    }
-  }, [messages])
 
   async function handleSend(e) {
     e.preventDefault()

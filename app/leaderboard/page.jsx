@@ -121,7 +121,7 @@ export default function LeaderboardPage() {
                     </div>
                     <div>
                       <h2 className="text-xl font-black">{user.fullName}</h2>
-                      <p className={`text-sm font-semibold ${index === 0 ? "text-white/65" : "text-[#77766f]"}`}>{user.username}</p>
+                      <p className={`text-sm font-semibold ${index === 0 ? "text-white/65" : "text-[#77766f]"}`}>@{user.username}</p>
                     </div>
                   </div>
                   <div className="mt-6 grid grid-cols-3 gap-3 border-t border-current/20 pt-5">
@@ -154,7 +154,7 @@ export default function LeaderboardPage() {
                         </div>
                         <div>
                           <h3 className="font-black">{user.fullName}</h3>
-                          <p className="text-sm font-semibold text-[#77766f]">{user.username}</p>
+                          <p className="text-sm font-semibold text-[#77766f]">@{user.username}</p>
                         </div>
                       </div>
                       <div className="flex gap-8 text-sm font-black">

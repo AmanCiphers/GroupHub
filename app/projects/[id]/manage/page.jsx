@@ -795,6 +795,9 @@ export default function ProjectManagePage() {
 
   // Chat
   const [chatConversationId, setChatConversationId] = useState(null)
+  const [chatView, setChatView] = useState("common")
+  const [dmConversationId, setDmConversationId] = useState(null)
+  const [dmTargetUserId, setDmTargetUserId] = useState(null)
 
   // Metadata for settings
   const [categories, setCategories] = useState([])
@@ -879,7 +882,8 @@ export default function ProjectManagePage() {
     if (activeTab === "team" && !loadedTabs.current.team) { loadMembers(); loadedTabs.current.team = true }
     if (activeTab === "overview" && !loadedTabs.current.overview) { loadActivity(); loadTasks(); loadedTabs.current.overview = true }
     if (activeTab === "tasks" && !loadedTabs.current.tasks) { loadTasks(); loadMembers(); loadedTabs.current.tasks = true }
-    if (activeTab === "chat" && !loadedTabs.current.chat && !chatConversationId) {
+    if (activeTab === "chat" && !loadedTabs.current.chat) {
+      loadMembers()
       apiFetch(`/api/v1/chat/conversations/project/${project._id || project.id}`, { method: "POST" })
         .then((p) => setChatConversationId(p.data.conversation._id))
         .catch(() => {})
@@ -959,6 +963,16 @@ export default function ProjectManagePage() {
       await apiFetch(`/api/v1/projects/${id}`, { method: "DELETE" })
       router.push("/dashboard")
     } catch (e) { setError(e.message) }
+  }
+
+  const handleOpenDM = async (userId) => {
+    setChatView("dm")
+    setDmTargetUserId(userId)
+    setDmConversationId(null)
+    try {
+      const payload = await apiFetch(`/api/v1/chat/conversations/dm/${userId}`, { method: "POST" })
+      setDmConversationId(payload.data.conversation._id)
+    } catch {}
   }
 
   const handleTaskCreated = (task) => {
@@ -1127,9 +1141,53 @@ export default function ProjectManagePage() {
         )}
 
         {activeTab === "chat" && (
-          chatConversationId
-            ? <div className="min-h-[500px] h-[60vh] border border-[#d9d8d2]"><ChatRoom conversationId={chatConversationId} /></div>
-            : <LoadingChat />
+          <div className="flex min-h-[500px] h-[60vh] border border-[#d9d8d2]">
+            <div className="w-56 shrink-0 border-r border-[#d9d8d2] bg-[#fbfbfa] flex flex-col overflow-y-auto">
+              <button
+                onClick={() => setChatView("common")}
+                className={`flex items-center gap-3 px-4 py-3 text-left text-sm font-black border-b border-[#d9d8d2] transition ${
+                  chatView === "common"
+                    ? "bg-white text-[#171717]"
+                    : "text-[#55544f] hover:text-[#171717]"
+                }`}
+              >
+                <MessageSquare className="size-4" />
+                Common
+              </button>
+              <div className="px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#77766f] border-b border-[#d9d8d2]">
+                Direct Messages
+              </div>
+              <div className="divide-y divide-[#d9d8d2]">
+                {members.map((m) => (
+                  <button
+                    key={m.user?.id}
+                    onClick={() => handleOpenDM(m.user?.id)}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-semibold transition ${
+                      chatView === "dm" && dmTargetUserId === m.user?.id
+                        ? "bg-white text-[#171717]"
+                        : "text-[#55544f] hover:text-[#171717]"
+                    }`}
+                  >
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[#2f2f2d] text-[10px] font-black text-white">
+                      {(m.user?.fullName || "?").split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                    </div>
+                    <span className="truncate">{m.user?.fullName || "Unknown"}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1">
+              {chatView === "common" ? (
+                chatConversationId
+                  ? <ChatRoom conversationId={chatConversationId} />
+                  : <LoadingChat />
+              ) : (
+                dmConversationId
+                  ? <ChatRoom conversationId={dmConversationId} />
+                  : <LoadingChat />
+              )}
+            </div>
+          </div>
         )}
 
         {activeTab === "files" && (

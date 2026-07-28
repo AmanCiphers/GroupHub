@@ -4,6 +4,8 @@ const { projectRepository } = require("../repositories/project.repository")
 const { roleRepository } = require("../repositories/role.repository")
 const { activityService } = require("./activity.service")
 const { notificationService } = require("./notification.service")
+const { emailService } = require("./email.service")
+const { userRepository } = require("../repositories/user.repository")
 const { ApiError } = require("../utils/ApiError")
 
 function serializeApplication(application) {
@@ -81,6 +83,21 @@ async function applyToRole(roleId, applicantId, payload) {
     entityId: application._id,
   })
 
+  Promise.all([
+    userRepository.findById(project.ownerId),
+    userRepository.findById(applicantId),
+  ]).then(([owner, applicant]) => {
+    if (owner) {
+      emailService.sendApplicationSubmittedEmail({
+        to: owner.email,
+        applicantName: applicant?.fullName || "Someone",
+        projectTitle: project.title,
+        projectId: String(project._id),
+        roleTitle: role.title,
+      })
+    }
+  })
+
   return serializeApplication(application)
 }
 
@@ -140,6 +157,27 @@ async function updateApplication(applicationId, userId, status) {
         roleId: result.roleId,
         roleTitle: role.title,
       })
+
+      Promise.all([
+        userRepository.findById(result.applicantId),
+        projectRepository.findById(result.projectId),
+      ]).then(([applicant, project]) => {
+        if (applicant) {
+          emailService.sendApplicationAcceptedEmail({
+            to: applicant.email,
+            applicantName: applicant.fullName,
+            projectTitle: project?.title || "Project",
+            projectId: String(result.projectId),
+            roleTitle: role.title,
+          })
+        }
+      })
+    }
+
+    let projectTitle = ""
+    if (status === "accepted") {
+      const project = await projectRepository.findById(result.projectId)
+      projectTitle = project?.title || ""
     }
 
     await activityService.record({
@@ -147,7 +185,7 @@ async function updateApplication(applicationId, userId, status) {
       projectId: result.projectId,
       targetUserId: result.applicantId,
       type: `application_${status}`,
-      metadata: { projectTitle: result.projectId?.title || "" },
+      metadata: { projectTitle },
     })
 
     await notificationService.notify({
