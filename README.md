@@ -1,3 +1,6 @@
+## ⚠️ Warning: This project is still under development. Some features may be incomplete, broken, unstable, or not work as expected. You may encounter bugs or unexpected behavior.
+
+
 # GroupHub
 
 > Find the right team for your project, or the right project for your skills.
