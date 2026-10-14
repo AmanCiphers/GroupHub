@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://grouphub.thecloverforge.com/sitemap.xml

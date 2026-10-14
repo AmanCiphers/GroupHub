@@ -1,3 +1,0 @@
-{
-  "ignoreCommand": "bash -c 'git diff --quiet HEAD~1 HEAD -- . :^backend/'"
-}
