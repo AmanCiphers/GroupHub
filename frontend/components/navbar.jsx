@@ -1,24 +1,33 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Menu, X, Users } from "lucide-react"
-import { useEffect, useCallback, useRef, useState } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import { Menu, X, Users, LogOut } from "lucide-react"
+import { useEffect, useCallback, useState } from "react"
+import { useDispatch, useSelector } from "react-redux"
+import { fetchMe, logoutUser } from "@/lib/features/auth/authSlice"
 
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About" },
-  { href: "/contact", label: "Contact" },
   { href: "/tutorials", label: "Tutorials" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/find-projects", label: "Find Projects" },
+  { href: "/contribute", label: "Contribute" },
 ]
 
-
-
+/** Global navigation with auth-aware actions and mobile drawer. */
 export function Navbar() {
   const pathname = usePathname()
   const isHome = pathname === "/"
+  const dispatch = useDispatch()
+  const initialized = useSelector((state) => state.auth.initialized)
+
+  useEffect(() => {
+    if (!initialized) {
+      dispatch(fetchMe())
+    }
+  }, [dispatch, initialized])
 
   if (isHome) {
     return (
@@ -56,19 +65,8 @@ export function Navbar() {
               <MobileMenu hiddenClass="xl:hidden" />
             </div>
 
-            <div className="hidden min-h-24 items-center gap-8 bg-[#fbfbfa] px-10 text-[#171717] xl:flex">
-              <Link
-                href="/account"
-                className="text-lg font-medium transition-colors hover:text-[#62615d]"
-              >
-                Account
-              </Link>
-              <Link
-                href="/dashboard"
-                className="text-lg font-medium transition-colors hover:text-[#62615d]"
-              >
-                Dashboard
-              </Link>
+            <div className="hidden min-h-24 items-center gap-8 bg-surface px-10 text-ink xl:flex">
+              <AccountActions variant="home" />
             </div>
           </nav>
         </header>
@@ -78,7 +76,7 @@ export function Navbar() {
 
   return (
     <div className="flex flex-col">
-      <header className="sticky top-0 z-[70] border-b border-white/15 bg-[#2f2f2d] text-white">
+      <header className="sticky top-0 z-[70] border-b border-white/15 bg-charcoal text-white">
         <nav className="flex min-h-[72px] items-center justify-between px-6 sm:px-10 lg:px-20 xl:px-28">
           <Link href="/" className="flex h-14 w-20 items-center justify-start" aria-label="GroupHub home">
             <img src="/Logo.svg" alt="" className="h-11 w-auto" />
@@ -99,12 +97,7 @@ export function Navbar() {
           </div>
 
           <div className="hidden lg:flex lg:items-center lg:gap-4">
-            <Link href="/account" className="text-sm font-bold text-white/70 hover:text-white">
-              Account
-            </Link>
-            <Link href="/dashboard" className="border border-white px-4 py-2 text-sm font-black transition hover:bg-white hover:text-[#171717]">
-              Dashboard
-            </Link>
+            <AccountActions />
           </div>
 
           <MobileMenu hiddenClass="lg:hidden" />
@@ -114,9 +107,66 @@ export function Navbar() {
   )
 }
 
+function AccountActions({ variant = "default" }) {
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const user = useSelector((state) => state.auth.user)
+
+  const isHome = variant === "home"
+
+  const accountClass = isHome
+    ? "text-lg font-medium transition-colors hover:text-quiet"
+    : "text-sm font-bold text-white/70 hover:text-white"
+  const dashboardClass = isHome
+    ? "text-lg font-medium transition-colors hover:text-quiet"
+    : "border border-white px-4 py-2 text-sm font-black transition hover:bg-white hover:text-ink"
+  const nameClass = isHome
+    ? "text-lg font-medium text-quiet"
+    : "text-sm font-bold text-white/70"
+  const logoutClass = isHome
+    ? "flex items-center gap-2 text-lg font-medium text-quiet transition-colors hover:text-ink"
+    : "flex items-center gap-2 text-sm font-bold text-white/70 transition-colors hover:text-white"
+
+  if (!user) {
+    return (
+      <>
+        <Link href="/account" className={accountClass}>
+          Account
+        </Link>
+        <Link href="/dashboard" className={dashboardClass}>
+          Dashboard
+        </Link>
+      </>
+    )
+  }
+
+  const handleLogout = async () => {
+    await dispatch(logoutUser())
+    router.push("/")
+  }
+
+  return (
+    <>
+      <Link href="/profile" className={nameClass}>
+        Hi, {user.name}
+      </Link>
+      <Link href="/dashboard" className={dashboardClass}>
+        Dashboard
+      </Link>
+      <button onClick={handleLogout} className={logoutClass}>
+        <LogOut className="size-4" />
+        Log out
+      </button>
+    </>
+  )
+}
+
 function MobileMenu({ hiddenClass }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const user = useSelector((state) => state.auth.user)
 
   const close = useCallback(() => setOpen(false), [])
 
@@ -142,11 +192,15 @@ function MobileMenu({ hiddenClass }) {
     return () => document.removeEventListener("keydown", handler)
   }, [open, close])
 
-  const links = [
-    ...navLinks,
-    { href: "/account", label: "Account" },
-    { href: "/dashboard", label: "Dashboard" },
-  ]
+  const links = user
+    ? navLinks
+    : [...navLinks, { href: "/account", label: "Account" }, { href: "/dashboard", label: "Dashboard" }]
+
+  const handleLogout = async () => {
+    close()
+    await dispatch(logoutUser())
+    router.push("/")
+  }
 
   return (
     <div className={hiddenClass}>
@@ -160,13 +214,13 @@ function MobileMenu({ hiddenClass }) {
 
       {open && (
         <div
-          className="fixed inset-0 z-[80] bg-[#171717]/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] bg-ink/60 backdrop-blur-sm"
           onClick={close}
         />
       )}
 
       <div
-        className={`fixed bottom-0 right-0 top-0 z-[85] w-[min(80vw,320px)] border-l border-white/10 bg-[#2f2f2d] p-6 pt-20 shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed bottom-0 right-0 top-0 z-[85] w-[min(80vw,320px)] border-l border-white/10 bg-charcoal p-6 pt-20 shadow-2xl transition-transform duration-300 ease-out ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -199,9 +253,24 @@ function MobileMenu({ hiddenClass }) {
           </nav>
 
           <div className="mt-auto border-t border-white/10 pt-6">
-            <p className="text-sm font-semibold text-white/30">
-              Find roles, build teams, and move projects forward.
-            </p>
+            {user ? (
+              <>
+                <p className="mb-4 text-sm font-semibold text-white/40">
+                  Signed in as {user.email}
+                </p>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-white/20 px-4 py-3 text-base font-bold text-white transition-colors hover:bg-white/5"
+                >
+                  <LogOut className="size-4" />
+                  Log out
+                </button>
+              </>
+            ) : (
+              <p className="text-sm font-semibold text-white/30">
+                Find roles, build teams, and move projects forward.
+              </p>
+            )}
           </div>
         </div>
       </div>

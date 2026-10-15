@@ -1,41 +1,14 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Check, CircleDot, Users } from "lucide-react"
+import { actions, projectRoles, steps } from "@/lib/data/home.data"
 
-const actions = [
-  ["Discover Projects", "Join Teams"],
-  ["Start Ideas", "Build Proof"],
-]
-
-const projectRoles = [
-  {
-    title: "AI Study Companion",
-    roles: ["Frontend", "ML", "Product"],
-    status: "2 roles open",
-  },
-  {
-    title: "Campus Event Map",
-    roles: ["Design", "Backend"],
-    status: "Recruiting",
-  },
-  {
-    title: "Portfolio Builder",
-    roles: ["React", "UX Writing"],
-    status: "New",
-  },
-]
-
-const steps = [
-  "Post what you want to build",
-  "Match with complementary skills",
-  "Ship with a focused team",
-]
-
+/** Marketing landing page. */
 export default function HomePage() {
   return (
-    <div className="bg-[#f7f7f3] text-[#171717]">
+    <div className="bg-canvas text-ink">
       <section className="grid min-h-[100svh] grid-cols-1 lg:grid-cols-[1fr_29vw]">
-        <div className="flex bg-[#2f2f2d] px-6 pb-16 pt-36 text-white sm:px-10 sm:pb-20 lg:min-h-[90svh] lg:px-20 lg:pb-24 lg:pt-44 xl:px-28">
+        <div className="flex bg-charcoal px-6 pb-16 pt-36 text-white sm:px-10 sm:pb-20 lg:min-h-[90svh] lg:px-20 lg:pb-24 lg:pt-44 xl:px-28">
           <div className="flex w-full max-w-3xl flex-col items-center justify-center text-center sm:items-start sm:text-left">
             <h1 className="max-w-4xl text-4xl font-black leading-[0.95] tracking-normal text-white sm:text-5xl lg:text-6xl">
               Build What You Couldn&apos;t Alone
@@ -63,7 +36,7 @@ export default function HomePage() {
             <div className="mt-8 flex flex-col items-center gap-3 sm:mt-12 sm:flex-row sm:justify-start">
               <Link
                 href="/dashboard"
-                className="inline-flex h-12 w-full items-center justify-center rounded-md border border-white/70 px-8 text-sm font-semibold text-white transition hover:bg-white hover:text-[#2f2f2d] sm:h-11 sm:w-fit"
+                className="inline-flex h-12 w-full items-center justify-center rounded-md border border-white/70 px-8 text-sm font-semibold text-white transition hover:bg-white hover:text-charcoal sm:h-11 sm:w-fit"
               >
                 Get Started
               </Link>
@@ -78,7 +51,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="relative flex items-center justify-center border-b border-[#d9d8d2] bg-[#fbfbfa] px-6 py-12 sm:px-8 sm:py-14 lg:min-h-[90svh] lg:border-b-0 lg:px-10 lg:py-20">
+        <div className="relative flex items-center justify-center border-b border-line bg-surface px-6 py-12 sm:px-8 sm:py-14 lg:min-h-[90svh] lg:border-b-0 lg:px-10 lg:py-20">
           <Image
             src="/home-team-illustration.png"
             alt="Students collaborating around a table"
@@ -90,13 +63,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-[#d9d8d2] bg-[#fbfbfa] px-6 py-12 sm:px-10 sm:py-16 lg:px-20 xl:px-28">
+      <section className="border-y border-line bg-surface px-6 py-12 sm:px-10 sm:py-16 lg:px-20 xl:px-28">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-12">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#62615d]">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-quiet">
               Project-first
             </p>
-            <h2 className="mt-4 max-w-xl text-3xl font-black leading-[1.05] tracking-normal text-[#171717] sm:text-5xl">
+            <h2 className="mt-4 max-w-xl text-3xl font-black leading-[1.05] tracking-normal text-ink sm:text-5xl">
               Turn loose ideas into teams with clear roles.
             </h2>
           </div>
@@ -106,14 +79,14 @@ export default function HomePage() {
               <Link
                 href="/find-projects"
                 key={project.title}
-                className="group grid gap-4 rounded-md border border-[#d9d8d2] bg-white p-4 transition hover:border-[#171717] sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
+                className="group grid gap-4 rounded-md border border-line bg-white p-4 transition hover:border-ink sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
               >
                 <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-[#62615d]">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-quiet">
                     <CircleDot className="size-4" />
                     {project.status}
                   </div>
-                  <h3 className="mt-2 text-xl font-black text-[#171717]">
+                  <h3 className="mt-2 text-xl font-black text-ink">
                     {project.title}
                   </h3>
                 </div>
@@ -121,7 +94,7 @@ export default function HomePage() {
                   {project.roles.map((role) => (
                     <span
                       key={role}
-                      className="rounded-full border border-[#d9d8d2] px-3 py-1 text-sm font-semibold text-[#31312f]"
+                      className="rounded-full border border-line px-3 py-1 text-sm font-semibold text-ink-soft"
                     >
                       {role}
                     </span>
@@ -133,13 +106,13 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-[#f7f7f3] px-6 py-14 sm:px-10 sm:py-20 lg:px-20 xl:px-28 flex flex-col items-center justify-center ">
+      <section className="bg-canvas px-6 py-14 sm:px-10 sm:py-20 lg:px-20 xl:px-28 flex flex-col items-center justify-center ">
         <div className="grid gap-8 lg:grid-cols-3 lg:gap-12 justify-between  lg:pl-60">
           <div className="lg:col-span-1 ">
-            <div className="flex size-12 items-center justify-center rounded-full bg-[#2f2f2d] text-white">
+            <div className="flex size-12 items-center justify-center rounded-full bg-charcoal text-white">
               <Users className="size-5" />
             </div>
-            <h2 className="mt-5 text-3xl font-black leading-[1.05] text-[#171717] sm:mt-6">
+            <h2 className="mt-5 text-3xl font-black leading-[1.05] text-ink sm:mt-6">
               Simple enough to start. Structured enough to finish.
             </h2>
           </div>
@@ -148,18 +121,18 @@ export default function HomePage() {
             {steps.map((step, index) => (
               <div
                 key={step}
-                className="grid grid-cols-[auto_auto_1fr] items-start gap-4 border-b border-[#d9d8d2] py-5 sm:flex sm:items-center sm:gap-5"
+                className="grid grid-cols-[auto_auto_1fr] items-start gap-4 border-b border-line py-5 sm:flex sm:items-center sm:gap-5"
               >
-                <span className="text-sm font-black text-[#62615d]">
+                <span className="text-sm font-black text-quiet">
                   0{index + 1}
                 </span>
-                <Check className="size-5 shrink-0 text-[#171717]" />
-                <p className="text-lg font-bold leading-snug text-[#171717] sm:text-xl">{step}</p>
+                <Check className="size-5 shrink-0 text-ink" />
+                <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{step}</p>
               </div>
             ))}
             <Link
               href="/tutorials"
-              className="mt-6 inline-flex w-fit items-center gap-2 text-sm font-black text-[#171717] underline underline-offset-4"
+              className="mt-6 inline-flex w-fit items-center gap-2 text-sm font-black text-ink underline underline-offset-4"
             >
               See how it works
               <ArrowRight className="size-4" />

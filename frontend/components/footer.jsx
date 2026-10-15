@@ -21,9 +21,10 @@ const footerLinks = {
   ],
 }
 
+/** Global site footer with links and branding. */
 export function Footer() {
   return (
-    <footer className="relative overflow-hidden border-t border-[#d9d8d2] bg-[#2f2f2d] text-white">
+    <footer className="relative overflow-hidden border-t border-line bg-charcoal text-white">
       <div className="pointer-events-none absolute -bottom-10 -right-10 select-none opacity-[0.04]">
         <img src="/white_clover.svg" alt="" className="h-auto scale-200 " />
       </div>
