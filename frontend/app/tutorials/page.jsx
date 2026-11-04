@@ -3,9 +3,8 @@ import {
   ArrowRight,
   BookOpen,
   Clock,
-  MessageSquare,
+  Construction,
   Play,
-  Rocket,
   Settings,
   Users,
 } from "lucide-react"
@@ -24,14 +23,22 @@ export default function TutorialsPage() {
       />
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+        <div className="mb-8 p-6 border-2 border-dashed border-line bg-surface rounded-xl text-center">
+          <Construction className="size-10 mx-auto text-quiet" />
+          <h2 className="mt-3 text-xl font-black">Tutorials are coming soon</h2>
+          <p className="mt-2 text-subtle">
+            We&apos;re preparing helpful guides for creating profiles, starting projects,
+            applying to roles, and collaborating effectively. Check back soon!
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           {categories.map((category, index) => (
             <button
               key={category}
-              className={`border px-4 py-2 text-sm font-black ${
-                index === 0
-                  ? "border-ink bg-ink text-white"
-                  : "border-line bg-surface text-subtle hover:border-ink"
+              disabled
+              className={`border px-4 py-2 text-sm font-black border-line bg-wash text-faint cursor-not-allowed ${
+                index === 0 ? "border-ink bg-ink/10 text-ink/50" : ""
               }`}
             >
               {category}
@@ -43,19 +50,19 @@ export default function TutorialsPage() {
       <section className="px-6 pb-20 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {tutorials.map(([title, description, category, duration, difficulty, Icon]) => (
-            <article key={title} className="group flex min-h-[260px] flex-col border border-line bg-surface p-5 transition hover:border-ink">
+            <article key={title} className="group flex min-h-[260px] flex-col border border-line bg-wash p-5 opacity-50 cursor-not-allowed">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex size-11 items-center justify-center bg-charcoal text-white">
+                <div className="flex size-11 items-center justify-center bg-charcoal/50 text-white/50">
                   <Icon className="size-5" />
                 </div>
-                <span className="border border-line bg-white px-2.5 py-1 text-xs font-black text-subtle">
+                <span className="border border-line bg-white/50 px-2.5 py-1 text-xs font-black text-faint">
                   {difficulty}
                 </span>
               </div>
-              <h2 className="mt-5 text-xl font-black leading-tight group-hover:underline group-hover:underline-offset-4">
+              <h2 className="mt-5 text-xl font-black leading-tight text-faint">
                 {title}
               </h2>
-              <p className="mt-3 flex-1 text-sm font-semibold leading-relaxed text-subtle">
+              <p className="mt-3 flex-1 text-sm font-semibold leading-relaxed text-faint">
                 {description}
               </p>
               <div className="mt-5 flex items-center justify-between border-t border-line pt-4 text-sm font-bold text-quiet">
@@ -68,9 +75,12 @@ export default function TutorialsPage() {
                   {category}
                 </span>
               </div>
-              <button className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-ink text-sm font-black transition hover:bg-ink hover:text-white">
+              <button
+                disabled
+                className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-line bg-wash text-faint cursor-not-allowed"
+              >
                 <Play className="size-4" />
-                Start
+                Coming soon
               </button>
             </article>
           ))}
