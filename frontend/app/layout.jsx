@@ -12,6 +12,10 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const metadata = {
   title: 'GroupHub - Find Your Team, Build Your Vision',
   description: 'Connect with skilled team members or find projects to contribute to. GroupHub helps students and professionals collaborate on ideas that matter.',
+  icons: {
+    icon: '/Logo.svg',
+    apple: '/apple-icon.png',
+  },
 }
 
 /** Root layout: fonts, providers, navbar, footer. */

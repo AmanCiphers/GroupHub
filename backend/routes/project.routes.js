@@ -7,6 +7,7 @@ import {
   downloadApplicationResume,
   addProjectRole,
   getLandingProjects,
+  getContributeData,
 } from "../controllers/project.controller.js";
 import {
   authenticateToken,
@@ -18,6 +19,7 @@ import { uploadApplicationResume } from "../middleware/upload.middleware.js";
 const router = express.Router();
 
 router.get("/landing", getLandingProjects);
+router.get("/contribute", getContributeData);
 router.get("/", listProjects);
 router.get("/:projectId", optionalAuth, getProjectById);
 router.post("/", authenticateToken, verifyCsrfToken, createProject);

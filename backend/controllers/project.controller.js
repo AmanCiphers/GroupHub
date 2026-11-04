@@ -947,3 +947,148 @@ export const getLandingProjects = async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 };
+
+// Contribution type mapping based on skills
+const CONTRIBUTION_TYPE_KEYWORDS = {
+  Development: [
+    "React", "React Native", "Vue", "Angular", "Svelte", "Next.js",
+    "Node.js", "Express", "Python", "Django", "Flask", "Ruby on Rails",
+    "PHP", "Laravel", "Java", "Spring", "Go", "Rust", "C#", "C++",
+    "GraphQL", "REST API", "PostgreSQL", "MongoDB", "MySQL", "SQL",
+    "Redis", "Docker", "Kubernetes", "AWS", "GCP", "Azure", "DevOps",
+    "CI/CD", "Firebase", "Supabase", "Prisma", "Mongoose",
+    "Swift", "Kotlin", "Mobile", "iOS", "Android", "Flutter",
+  ],
+  Design: [
+    "UI/UX", "UX Research", "Product Design", "Figma", "Sketch", "Adobe XD",
+    "Graphic Design", "Motion Design", "Branding", "Illustration",
+    "Prototyping", "Design Systems", "Accessibility", "Interaction Design",
+  ],
+  Marketing: [
+    "Marketing", "SEO", "SEM", "Content Marketing", "Social Media",
+    "Copywriting", "Growth", "Analytics", "Email Marketing", "Brand Strategy",
+    "PR", "Influencer Marketing",
+  ],
+  Documentation: [
+    "Technical Writing", "Translation",
+  ],
+  Mentorship: [
+    "Mentoring", "Code Review",
+  ],
+  "Testing & QA": [
+    "QA Testing", "Automation", "Bug Reports",
+  ],
+};
+
+const getContributionType = (skills) => {
+  const skillSet = new Set(skills.map((s) => s.toLowerCase()));
+  for (const [type, keywords] of Object.entries(CONTRIBUTION_TYPE_KEYWORDS)) {
+    if (keywords.some((k) => skillSet.has(k.toLowerCase()))) {
+      return type;
+    }
+  }
+  return "Development"; // default
+};
+
+export const getContributeData = async (req, res) => {
+  try {
+    // Fetch public projects with open roles
+    const projects = await Project.find({
+      visibility: "public",
+      status: { $in: ["Recruiting", "Active"] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .populate("ownerId", "name")
+      .lean();
+
+    const projectIds = projects.map((p) => p._id);
+
+    const roles = await ProjectRole.find({
+      projectId: { $in: projectIds },
+      status: "Open",
+    })
+      .select("projectId title skills slots status")
+      .lean();
+
+    const rolesByProject = roles.reduce((acc, role) => {
+      if (!acc[role.projectId]) acc[role.projectId] = [];
+      acc[role.projectId].push(role);
+      return acc;
+    }, {});
+
+    // Build contribution type counts
+    const contributionCounts = {
+      Development: 0,
+      Design: 0,
+      Marketing: 0,
+      Documentation: 0,
+      Mentorship: 0,
+      "Testing & QA": 0,
+    };
+
+    // Enrich projects with roles and compute contribution counts
+    const enrichedProjects = projects
+      .map((project) => {
+        const projectRoles = rolesByProject[project._id] || [];
+        return {
+          ...project,
+          roles: projectRoles,
+        };
+      })
+      .filter((project) => project.roles.length > 0);
+
+    // Count open roles per contribution type
+    enrichedProjects.forEach((project) => {
+      project.roles.forEach((role) => {
+        const type = getContributionType(role.skills || []);
+        contributionCounts[type] = (contributionCounts[type] || 0) + (role.slots || 1);
+      });
+    });
+
+    // Featured projects: sort by status (Recruiting first), then by recency, limit 6
+    const featuredProjects = enrichedProjects
+      .sort((a, b) => {
+        if (a.status === "Recruiting" && b.status !== "Recruiting") return -1;
+        if (b.status === "Recruiting" && a.status !== "Recruiting") return 1;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      })
+      .slice(0, 6)
+      .map((project) => ({
+        _id: project._id,
+        title: project.title,
+        description: project.description,
+        category: project.category,
+        stage: project.stage,
+        status: project.status,
+        commitment: project.commitment,
+        experienceLevel: project.experienceLevel,
+        location: project.location,
+        needs: project.roles.map((r) => r.title),
+        urgency: project.status === "Recruiting" ? "High" : "Medium",
+      }));
+
+    // Contribution types with real counts
+    const contributionTypes = [
+      ["Development", contributionCounts.Development || 0],
+      ["Design", contributionCounts.Design || 0],
+      ["Marketing", contributionCounts.Marketing || 0],
+      ["Documentation", contributionCounts.Documentation || 0],
+      ["Mentorship", contributionCounts.Mentorship || 0],
+      ["Testing & QA", contributionCounts["Testing & QA"] || 0],
+    ];
+
+    return res.status(200).json({
+      contributionTypes,
+      featuredProjects,
+      heroPoints: [
+        ["Build proof", "Real project work that shows what you can do."],
+        ["Meet builders", "Collaborate beyond your immediate network."],
+        ["Earn history", "Keep visible contributions attached to your profile."],
+      ],
+    });
+  } catch (error) {
+    logProjectEvent(`Contribute data error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
