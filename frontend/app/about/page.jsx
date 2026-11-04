@@ -21,7 +21,7 @@ export default function AboutPage() {
         title="We help people turn unfinished ideas into working teams."
         description="GroupHub exists for builders who have momentum but not every skill. The product makes missing roles visible and makes joining a team feel less awkward."
       >
-        <PageHeaderSkeleton />
+  
       </PageHeader>
 
       <section className="px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
