@@ -67,7 +67,7 @@ export default async function HomePage() {
               Build what you couldn&apos;t alone.
             </h1>
 
-            <div className="mt-5 grid max-w-xl grid-cols-[1fr_auto_1fr] gap-3 text-base font-bold leading-tight text-white sm:mt-8 sm:gap-4 sm:text-2xl">
+            <div className="mt-5 grid max-w-xl grid-cols-[1fr_auto_1fr] gap-3 text-base font-bold leading-tight text-white sm:mt-8 sm:gap-4 sm:text-xl">
               <div className="space-y-2">
                 {actions.map(([left]) => (
                   <p key={left}>{left}</p>
@@ -143,8 +143,9 @@ export default async function HomePage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-charcoal text-white">
               <Users className="size-5" />
             </div>
-            <h2 className="mt-5 text-display font-semibold tracking-tight text-ink sm:mt-6">
-              Simple enough to start. Structured enough to finish.
+            <h2 className="mt-5 text-[2.5rem] font-semibold tracking-tight text-ink sm:mt-6">
+              Simple enough to start. 
+              Structured enough to finish.
             </h2>
           </div>
 
