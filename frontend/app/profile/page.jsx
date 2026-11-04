@@ -98,11 +98,10 @@ function Notice({ message }) {
   return (
     <p
       role={message.type === "error" ? "alert" : "status"}
-      className={`border px-3 py-2 text-sm font-semibold ${
-        message.type === "error"
-          ? "border-red-300 bg-red-50 text-red-700"
-          : "border-line bg-white text-subtle"
-      }`}
+      className={`border px-3 py-2 text-sm font-semibold ${message.type === "error"
+        ? "border-red-300 bg-red-50 text-red-700"
+        : "border-line bg-white text-subtle"
+        }`}
     >
       {message.text}
     </p>
@@ -717,6 +716,10 @@ export default function ProfilePage() {
                       />
                     </div>
                   </FormField>
+
+
+                  {/* //empty div to align the confirm password field in the grid */}
+                  <div></div>
 
                   <FormField label="Confirm new password">
                     <div className="flex items-center border border-line bg-white focus-within:border-ink">

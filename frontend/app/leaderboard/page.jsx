@@ -21,7 +21,6 @@ export default function LeaderboardPage() {
         title="Recognize the builders who keep teams moving."
         description="Points reward completed work, mentorship, reviews, and reliable project momentum."
       >
-        <PageHeaderSkeleton />
       </PageHeader>
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
