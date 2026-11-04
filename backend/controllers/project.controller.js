@@ -156,6 +156,11 @@ export const createProject = async (req, res) => {
           message: `Role ${idx + 1}: title is required.`,
         });
       }
+      if (role.description !== undefined && typeof role.description !== "string") {
+        return res.status(400).json({
+          message: `Role ${idx + 1}: description must be a string.`,
+        });
+      }
       if (role.slots !== undefined && (!isNumber(role.slots) || role.slots < 1)) {
         return res.status(400).json({
           message: `Role ${idx + 1}: slots must be a number >= 1.`,
@@ -312,6 +317,7 @@ export const createProject = async (req, res) => {
         ProjectRole.create({
           projectId: project._id,
           title: role.title.trim(),
+          description: typeof role.description === "string" ? role.description.trim().slice(0, 1000) : "",
           skills: normalizeList(role.skills, { maxItems: 20, maxLen: 50 }),
           slots: isNumber(role.slots) ? role.slots : 1,
           status: ROLE_STATUS.includes(role.status) ? role.status : "Open",
@@ -345,10 +351,13 @@ export const createProject = async (req, res) => {
 export const addProjectRole = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { title, skills, slots, status } = req.body || {};
+    const { title, description, skills, slots, status } = req.body || {};
 
     if (!isString(title) || title.trim() === "") {
       return res.status(400).json({ message: "Role title is required." });
+    }
+    if (description !== undefined && typeof description !== "string") {
+      return res.status(400).json({ message: "description must be a string." });
     }
     if (slots !== undefined && (!isNumber(slots) || slots < 1)) {
       return res.status(400).json({ message: "slots must be a number >= 1." });
@@ -372,6 +381,7 @@ export const addProjectRole = async (req, res) => {
     const role = await ProjectRole.create({
       projectId: project._id,
       title: title.trim(),
+      description: typeof description === "string" ? description.trim().slice(0, 1000) : "",
       skills: normalizeList(skills, { maxItems: 20, maxLen: 50 }),
       slots: isNumber(slots) ? slots : 1,
       status: ROLE_STATUS.includes(status) ? status : "Open",

@@ -16,6 +16,13 @@ const projectRoleSchema = new mongoose.Schema(
       trim: true,
     },
 
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: "",
+    },
+
     skills: {
       type: [String],
       default: [],

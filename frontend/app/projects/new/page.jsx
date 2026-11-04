@@ -50,7 +50,7 @@ const emptyForm = {
   skills: [],
   tags: [],
   roles: [
-    { title: "", skills: [], slots: 1, status: "Open" },
+    { title: "", description: "", skills: [], slots: 1, status: "Open" },
   ],
 }
 
@@ -263,6 +263,7 @@ export default function NewProjectPage() {
           tags: form.tags,
           roles: form.roles.map((r) => ({
             title: r.title.trim(),
+            description: (r.description || "").trim(),
             skills: r.skills,
             slots: Number(r.slots) || 1,
             status: r.status,
@@ -657,6 +658,28 @@ export default function NewProjectPage() {
                     </div>
                     <div>
                       <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
+                        Role description
+                        <span className="text-xs font-semibold text-faint ml-2">
+                          ({role.description?.length || 0}/1000)
+                        </span>
+                      </label>
+                      <textarea
+                        maxLength={1000}
+                        className="mt-1.5 min-h-24 w-full border border-line bg-white p-3 font-semibold outline-none focus:border-ink"
+                        placeholder="Describe what this role will do, key responsibilities, and what you're looking for."
+                        value={role.description || ""}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            roles: prev.roles.map((r, i) =>
+                              i === idx ? { ...r, description: e.target.value } : r
+                            ),
+                          }))
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
                         Skills for this role
                       </label>
                       <ChipPicker
@@ -724,7 +747,7 @@ export default function NewProjectPage() {
                   onClick={() => {
                     setForm((prev) => ({
                       ...prev,
-                      roles: [...prev.roles, { title: "", skills: [], slots: 1, status: "Open" }],
+                      roles: [...prev.roles, { title: "", description: "", skills: [], slots: 1, status: "Open" }],
                     }))
                   }}
                   className="inline-flex items-center gap-2 border-2 border-dashed border-line bg-white px-4 py-2 text-sm font-black text-subtle transition hover:border-ink hover:text-ink"
