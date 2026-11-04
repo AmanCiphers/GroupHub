@@ -7,7 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8762"
 
 async function fetchLandingProjects() {
   try {
-    const res = await fetch(`${API_URL}/api/projects/landing?limit=4`, {
+    const res = await fetch(`${API_URL}/api/projects/landing?limit=3`, {
       next: { revalidate: 60 },
     })
     if (!res.ok) throw new Error("Failed to fetch")
