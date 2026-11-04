@@ -14,14 +14,28 @@ const SEED_PASSWORD = process.env.SEED_PASSWORD || 'demo-password-123';
 const isProduction = process.env.NODE_ENV === 'production';
 const force = process.argv.includes('--force');
 
+const ownerProfile = (owner) => ({
+  name: owner.name,
+  headline: owner.headline,
+  bio: owner.bio,
+  location: owner.location,
+  skills: owner.skills,
+  links: owner.links,
+  availability: owner.availability,
+  experienceLevel: owner.experienceLevel,
+});
+
 const ensureOwner = async (owner, passwordHash) => {
   const existing = await User.findOne({ email: owner.email });
   if (existing) {
-    await User.updateOne({ _id: existing._id }, { $set: { name: owner.name } });
+    await User.updateOne(
+      { _id: existing._id },
+      { $set: ownerProfile(owner) },
+    );
     return existing;
   }
   return User.create({
-    name: owner.name,
+    ...ownerProfile(owner),
     email: owner.email,
     password: passwordHash,
   });

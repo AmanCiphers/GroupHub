@@ -227,11 +227,10 @@ Seeding is idempotent for seed-owned data and refuses to run in production unles
 
 ## 7. Future work
 
-- Apply-to-project flow and project detail page.
 - Accept/reject received applications (requires role/slot updates and
-  membership creation).
+  membership creation). See `PROJECT_PAGE.md` for the current apply flow.
 - Task board and milestone management.
-- Notifications (Bell) and workspace settings (gear).
+- Notifications (Bell) and additional workspace settings beyond `/profile`.
 - Real activity event log (`ActivityEvent`) if history must be durable.
 - User skills/interests to improve recommendations.
-- Wire "View project" and saved/bookmarked projects.
+- Saved/bookmarked projects (currently local-only on Find Projects).

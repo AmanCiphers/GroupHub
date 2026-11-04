@@ -20,6 +20,20 @@ const profilePoints = [
 
 const emptyForm = { name: "", email: "", password: "", confirmPassword: "" }
 
+function getNextPath() {
+  if (typeof window === "undefined") return "/dashboard"
+  const next = new URLSearchParams(window.location.search).get("next")
+  if (
+    !next ||
+    !next.startsWith("/") ||
+    next.startsWith("//") ||
+    next.startsWith("/account")
+  ) {
+    return "/dashboard"
+  }
+  return next
+}
+
 /** Auth page: login/register form with Redux integration. */
 export default function AccountPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -59,7 +73,7 @@ export default function AccountPage() {
         loginUser({ email: form.email, password: form.password })
       )
       if (loginUser.fulfilled.match(result)) {
-        router.push("/dashboard")
+        router.push(getNextPath())
       }
       return
     }

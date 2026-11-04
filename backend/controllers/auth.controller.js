@@ -1,14 +1,87 @@
 import bcrypt from 'bcryptjs';
+import fs from 'node:fs';
+import path from 'node:path';
 import User from '../models/User.model.js';
-import jwt from 'jsonwebtoken';
 import { EncryptJWT } from 'jose';
-import { createSecretKey } from 'node:crypto';
 import { randomBytes } from 'node:crypto';
+import { resumeDirectory } from '../middleware/upload.middleware.js';
+import { COMMITMENT, EXPERIENCE_LEVEL } from '../utils/enums.js';
 
 const logAuthEvent = (message) => {
     console.log('========================================');
     console.log(` [Event] -> ${message}`);
     console.log('========================================');
+};
+
+const toPublicUser = (user) => ({
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    headline: user.headline || '',
+    bio: user.bio || '',
+    location: user.location || '',
+    skills: user.skills || [],
+    links: {
+        github: user.links?.github || '',
+        website: user.links?.website || '',
+        linkedin: user.links?.linkedin || '',
+    },
+    availability: user.availability || null,
+    experienceLevel: user.experienceLevel || null,
+    resume: user.resume?.filename
+        ? {
+              originalName: user.resume.originalName,
+              size: user.resume.size,
+              uploadedAt: user.resume.uploadedAt,
+          }
+        : null,
+    createdAt: user.createdAt,
+});
+
+const normalizeSkills = (skills) => {
+    if (!Array.isArray(skills)) return null;
+    const seen = new Set();
+    const output = [];
+    for (const raw of skills) {
+        if (typeof raw !== 'string') continue;
+        const skill = raw.trim().slice(0, 50);
+        const key = skill.toLowerCase();
+        if (!skill || seen.has(key) || output.length >= 30) continue;
+        seen.add(key);
+        output.push(skill);
+    }
+    return output;
+};
+
+const normalizeUrl = (value, label) => {
+    if (typeof value !== 'string') {
+        throw new Error(`${label} must be a string.`);
+    }
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (trimmed.length > 200) {
+        throw new Error(`${label} cannot exceed 200 characters.`);
+    }
+    const withProtocol = /^https?:\/\//i.test(trimmed)
+        ? trimmed
+        : `https://${trimmed}`;
+    let parsed;
+    try {
+        parsed = new URL(withProtocol);
+    } catch {
+        throw new Error(`${label} must be a valid URL.`);
+    }
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new Error(`${label} must use http or https.`);
+    }
+    return parsed.toString();
+};
+
+const removeStoredFile = (filename) => {
+    if (!filename) return;
+    const filePath = path.join(resumeDirectory, path.basename(filename));
+    fs.promises.unlink(filePath).catch(() => {});
 };
 
 export const register = async (req, res) => {
@@ -83,13 +156,7 @@ export const register = async (req, res) => {
 
     return res.status(201).json({
         message: 'User registered successfully',
-        user: {
-            id: newUser._id,
-            name: newUser.name,
-            email: newUser.email,
-            role: newUser.role,
-            createdAt: newUser.createdAt,
-        },
+        user: toPublicUser(newUser),
     });
 };
 
@@ -176,12 +243,7 @@ export const login = async (req, res) => {
 
         return res.status(200).json({
             message: 'Login successful',
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-            },
+            user: toPublicUser(user),
             csrfToken,
         });
     } catch (error) {
@@ -196,7 +258,7 @@ export const login = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select(
-            'name email role'
+            'name email role headline bio location skills links availability experienceLevel resume createdAt'
         );
 
         if (!user) {
@@ -206,12 +268,7 @@ export const getMe = async (req, res) => {
         }
 
         return res.status(200).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-            },
+            user: toPublicUser(user),
             csrfToken: req.user.csrfToken,
         });
     } catch (error) {
@@ -223,6 +280,296 @@ export const getMe = async (req, res) => {
     }
 };
 
+
+export const updateProfile = async (req, res) => {
+    try {
+        const {
+            name,
+            headline,
+            bio,
+            location,
+            skills,
+            links,
+            availability,
+            experienceLevel,
+        } = req.body || {};
+
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(401).json({ message: 'User no longer exists.' });
+        }
+
+        if (name !== undefined) {
+            if (typeof name !== 'string') {
+                return res.status(400).json({ message: 'Name must be a string.' });
+            }
+            const trimmedName = name.trim();
+            if (!trimmedName || trimmedName.length > 80) {
+                return res.status(400).json({
+                    message: 'Name must be between 1 and 80 characters.',
+                });
+            }
+            user.name = trimmedName;
+        }
+
+        if (headline !== undefined) {
+            if (typeof headline !== 'string') {
+                return res.status(400).json({ message: 'Headline must be a string.' });
+            }
+            const trimmedHeadline = headline.trim();
+            if (trimmedHeadline.length > 120) {
+                return res.status(400).json({
+                    message: 'Headline cannot exceed 120 characters.',
+                });
+            }
+            user.headline = trimmedHeadline;
+        }
+
+        if (bio !== undefined) {
+            if (typeof bio !== 'string') {
+                return res.status(400).json({ message: 'Bio must be a string.' });
+            }
+            const trimmedBio = bio.trim();
+            if (trimmedBio.length > 1000) {
+                return res.status(400).json({
+                    message: 'Bio cannot exceed 1000 characters.',
+                });
+            }
+            user.bio = trimmedBio;
+        }
+
+        if (location !== undefined) {
+            if (typeof location !== 'string') {
+                return res.status(400).json({ message: 'Location must be a string.' });
+            }
+            const trimmedLocation = location.trim();
+            if (trimmedLocation.length > 80) {
+                return res.status(400).json({
+                    message: 'Location cannot exceed 80 characters.',
+                });
+            }
+            user.location = trimmedLocation;
+        }
+
+        if (skills !== undefined) {
+            const normalizedSkills = normalizeSkills(skills);
+            if (normalizedSkills === null) {
+                return res.status(400).json({
+                    message: 'Skills must be an array of strings.',
+                });
+            }
+            user.skills = normalizedSkills;
+        }
+
+        if (links !== undefined) {
+            if (!links || typeof links !== 'object' || Array.isArray(links)) {
+                return res.status(400).json({
+                    message: 'Links must be an object.',
+                });
+            }
+
+            const nextLinks = {
+                github: user.links?.github || '',
+                website: user.links?.website || '',
+                linkedin: user.links?.linkedin || '',
+            };
+
+            try {
+                for (const key of ['github', 'website', 'linkedin']) {
+                    if (links[key] !== undefined) {
+                        nextLinks[key] = normalizeUrl(links[key], `links.${key}`);
+                    }
+                }
+            } catch (error) {
+                return res.status(400).json({ message: error.message });
+            }
+
+            user.links = nextLinks;
+        }
+
+        if (availability !== undefined) {
+            if (availability === null || availability === '') {
+                user.availability = undefined;
+            } else if (!COMMITMENT.includes(availability)) {
+                return res.status(400).json({
+                    message: `availability must be one of: ${COMMITMENT.join(', ')}.`,
+                });
+            } else {
+                user.availability = availability;
+            }
+        }
+
+        if (experienceLevel !== undefined) {
+            if (experienceLevel === null || experienceLevel === '') {
+                user.experienceLevel = undefined;
+            } else if (!EXPERIENCE_LEVEL.includes(experienceLevel)) {
+                return res.status(400).json({
+                    message: `experienceLevel must be one of: ${EXPERIENCE_LEVEL.join(', ')}.`,
+                });
+            } else {
+                user.experienceLevel = experienceLevel;
+            }
+        }
+
+        await user.save();
+
+        logAuthEvent(`Profile updated for ${user.email}`);
+
+        return res.status(200).json({
+            message: 'Profile updated.',
+            user: toPublicUser(user),
+        });
+    } catch (error) {
+        logAuthEvent(`Update profile error: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body || {};
+
+        if (
+            typeof currentPassword !== 'string' ||
+            typeof newPassword !== 'string'
+        ) {
+            return res.status(400).json({
+                message: 'Current password and new password are required.',
+            });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({
+                message: 'New password must be at least 8 characters long.',
+            });
+        }
+
+        if (currentPassword === newPassword) {
+            return res.status(400).json({
+                message: 'New password must be different from the current password.',
+            });
+        }
+
+        const user = await User.findById(req.user.userId).select('+password');
+        if (!user) {
+            return res.status(401).json({ message: 'User no longer exists.' });
+        }
+
+        const isValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isValid) {
+            return res.status(400).json({
+                message: 'Current password is incorrect.',
+            });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 12);
+        await user.save();
+
+        logAuthEvent(`Password changed for ${user.email}`);
+
+        return res.status(200).json({
+            message: 'Password updated successfully.',
+        });
+    } catch (error) {
+        logAuthEvent(`Change password error: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const uploadUserResume = async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ message: 'Choose a resume to upload.' });
+    }
+
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            removeStoredFile(req.file.filename);
+            return res.status(401).json({ message: 'User no longer exists.' });
+        }
+
+        const previousFilename = user.resume?.filename;
+
+        user.resume = {
+            filename: req.file.filename,
+            originalName:
+                path.basename(req.file.originalname).slice(0, 200) || 'resume',
+            mimeType: req.file.mimetype,
+            size: req.file.size,
+            uploadedAt: new Date(),
+        };
+
+        await user.save();
+
+        if (previousFilename && previousFilename !== req.file.filename) {
+            removeStoredFile(previousFilename);
+        }
+
+        logAuthEvent(`Resume uploaded for ${user.email}`);
+
+        return res.status(200).json({
+            message: 'Resume uploaded.',
+            user: toPublicUser(user),
+        });
+    } catch (error) {
+        removeStoredFile(req.file.filename);
+        logAuthEvent(`Upload resume error: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const deleteUserResume = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user) {
+            return res.status(401).json({ message: 'User no longer exists.' });
+        }
+
+        const filename = user.resume?.filename;
+        user.resume = undefined;
+        await user.save();
+
+        if (filename) {
+            removeStoredFile(filename);
+        }
+
+        logAuthEvent(`Resume removed for ${user.email}`);
+
+        return res.status(200).json({
+            message: 'Resume removed.',
+            user: toPublicUser(user),
+        });
+    } catch (error) {
+        logAuthEvent(`Delete resume error: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
+
+export const downloadUserResume = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        if (!user?.resume?.filename) {
+            return res.status(404).json({ message: 'No resume uploaded.' });
+        }
+
+        const filePath = path.join(
+            resumeDirectory,
+            path.basename(user.resume.filename),
+        );
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ message: 'Resume file is missing.' });
+        }
+
+        return res.download(
+            filePath,
+            path.basename(user.resume.originalName || 'resume'),
+        );
+    } catch (error) {
+        logAuthEvent(`Download resume error: ${error.message}`);
+        return res.status(500).json({ message: 'Internal server error.' });
+    }
+};
 
 export const logout = (req, res) => {
     const isProduction = process.env.NODE_ENV === 'production';

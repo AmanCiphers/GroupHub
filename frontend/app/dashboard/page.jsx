@@ -196,13 +196,13 @@ export default function DashboardPage() {
             >
               <Bell className="size-5" />
             </button>
-            <button
-              type="button"
-              aria-label="Workspace settings"
-              className="flex size-11 items-center justify-center border border-line bg-white"
+            <Link
+              href="/profile"
+              aria-label="Account settings"
+              className="flex size-11 items-center justify-center border border-line bg-white transition hover:border-ink"
             >
               <Settings className="size-5" />
-            </button>
+            </Link>
             <Link
               href="/projects/new"
               className="inline-flex h-11 items-center gap-2 border border-ink bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
@@ -310,7 +310,12 @@ export default function DashboardPage() {
                               {project.stage}
                             </span>
                           </div>
-                          <h3 className="mt-3 text-2xl font-black">{project.title}</h3>
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className="mt-3 block text-2xl font-black hover:underline hover:underline-offset-4"
+                          >
+                            {project.title}
+                          </Link>
                           <p className="mt-2 text-sm font-semibold text-subtle">
                             Next: {project.nextMilestone}
                           </p>
@@ -384,7 +389,12 @@ export default function DashboardPage() {
                           {project.memberRole}
                         </span>
                       </div>
-                      <h3 className="mt-3 text-xl font-black">{project.title}</h3>
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="mt-3 block text-xl font-black hover:underline hover:underline-offset-4"
+                      >
+                        {project.title}
+                      </Link>
                       <p className="mt-2 text-sm font-semibold text-subtle">
                         {project.category} · {project.stage}
                       </p>
@@ -422,7 +432,12 @@ export default function DashboardPage() {
                       className="flex flex-col gap-3 border border-line bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
-                        <h3 className="font-black">{application.projectTitle}</h3>
+                        <Link
+                          href={`/projects/${application.projectId}`}
+                          className="font-black hover:underline hover:underline-offset-4"
+                        >
+                          {application.projectTitle}
+                        </Link>
                         <p className="mt-1 text-sm font-semibold text-faint">
                           {application.roleTitle} · Applied{" "}
                           {timeAgo(application.appliedAt)}
@@ -463,7 +478,13 @@ export default function DashboardPage() {
                           <h3 className="font-black">{application.applicantName}</h3>
                           <p className="mt-1 text-sm font-semibold text-faint">
                             {application.applicantEmail || "Applicant"}{" "}
-                            · {application.roleTitle} on {application.projectTitle}
+                            · {application.roleTitle} on{" "}
+                            <Link
+                              href={`/projects/${application.projectId}`}
+                              className="underline underline-offset-2 hover:text-ink"
+                            >
+                              {application.projectTitle}
+                            </Link>
                           </p>
                           <p className="mt-1 text-xs font-semibold text-faint">
                             Applied {timeAgo(application.appliedAt)}
@@ -507,9 +528,12 @@ export default function DashboardPage() {
                           {project.spotsOpen} spots open
                         </span>
                       </div>
-                      <h3 className="mt-2 text-lg font-black leading-tight">
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className="mt-2 block text-lg font-black leading-tight hover:underline hover:underline-offset-4"
+                      >
                         {project.title}
-                      </h3>
+                      </Link>
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {(project.skills || []).slice(0, 3).map((skill) => (
                           <span

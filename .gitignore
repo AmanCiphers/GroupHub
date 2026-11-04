@@ -35,5 +35,8 @@ Thumbs.db
 .vscode/
 *.swp
 
+# Uploaded files
+backend/uploads/
+
 # Miscellaneous
 /brag-output-2026-10-22-1130

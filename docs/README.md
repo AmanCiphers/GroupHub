@@ -4,7 +4,9 @@
 | --- | --- |
 | [`IMPLEMENTATION_LOG.md`](./IMPLEMENTATION_LOG.md) | Chronological, detailed record of engineering work, decisions, verification, and known limitations. |
 | [`DASHBOARD.md`](./DASHBOARD.md) | Feature specification for the authenticated user dashboard: API contract, stats, UI sections, seed data, and future work. |
-| [`PROJECT_ARCHITECTURE.md`](./PROJECT_ARCHITECTURE.md) | Historical architecture snapshot dated 15 October 2026. Useful for broader context, but it predates the project-domain backend, seeded data, discovery filters, and the dashboard. |
+| [`ACCOUNT_SETTINGS.md`](./ACCOUNT_SETTINGS.md) | Profile, resume upload, and password settings at `/profile`, including API contracts and storage notes. |
+| [`PROJECT_PAGE.md`](./PROJECT_PAGE.md) | Project detail page, open roles, optional-auth visibility, and the application flow. |
+| [`PROJECT_ARCHITECTURE.md`](./PROJECT_ARCHITECTURE.md) | Historical architecture snapshot dated 15 October 2026. Useful for broader context, but it predates the project-domain backend, seeded data, discovery filters, the dashboard, account settings, and project applications. |
 
 ## Current source vs. old documents
 

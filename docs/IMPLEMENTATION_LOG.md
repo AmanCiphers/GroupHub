@@ -267,7 +267,113 @@ Rewritten file: `frontend/app/dashboard/page.jsx`
 
 ---
 
-## 6. Verification summary
+## 6. Account settings and resumes
+
+### Files
+- `frontend/app/profile/page.jsx` — rewritten from a UI-only stub.
+- `frontend/components/chip-picker.jsx` — extracted from the new-project page
+  and reused for profile skills.
+- `frontend/app/projects/new/page.jsx` — now imports the shared `ChipPicker`.
+- `backend/models/User.model.js` — profile, links, availability, experience, and
+  resume metadata.
+- `backend/controllers/auth.controller.js` — public user serializer, profile and
+  password updates, resume upload/download/delete.
+- `backend/routes/auth.routes.js` — new authenticated routes.
+- `backend/middleware/upload.middleware.js` — multer disk storage and validation.
+- `.gitignore` — ignores `backend/uploads/`.
+- `backend/package.json` — adds `multer`.
+
+### Behaviour
+- `PATCH /api/auth/profile` updates only the allowed profile fields. Names are
+  1–80 characters, headline ≤120, bio ≤1000, location ≤80, skills ≤30 entries,
+  links ≤200 characters and http(s), availability/experience must use the
+  existing enums.
+- Links without a protocol are normalized to `https://`.
+- `PATCH /api/auth/password` verifies the current password, requires at least 8
+  characters, and hashes the new password with bcrypt cost 12.
+- Resume upload accepts PDF/DOC/DOCX up to 5 MB, stores it under
+  `backend/uploads/resumes/` with a generated filename, and never exposes that
+  filename to the client.
+- Resume download is authenticated and limited to the current user.
+- Deleting or replacing a resume removes the old file from disk.
+- `GET /api/auth/getMe` and login/register responses now return the full public
+  profile through `toPublicUser()`.
+
+### UI
+- Guarded `/profile` page with loading skeleton.
+- Profile form, skills chip picker, availability/experience selects, and links.
+- Resume card with upload, download, replace, and remove actions.
+- Password form with current/new/confirm fields.
+- Sticky preview card with initials, headline, location, skills, links, and a
+  9-field profile-strength meter.
+- Navbar profile link and dashboard gear now point to `/profile`.
+- Logged-in mobile menu includes Dashboard and Profile.
+
+### Verification
+- Profile changes persisted through `getMe`.
+- Password change and restore succeeded.
+- Resume upload, download (69-byte test file), and delete succeeded.
+- `npm run build` passed.
+
+---
+
+## 7. Project page and applications
+
+### Files
+- `frontend/app/projects/[projectId]/page.jsx` — new project detail page.
+- `frontend/app/find-projects/page.jsx` — “View project” wired.
+- `frontend/app/dashboard/page.jsx` — project titles and application project
+  names link to detail pages; gear links to settings.
+- `frontend/app/account/page.jsx` — safe `next` redirect after login.
+- `backend/middleware/auth.middleware.js` — extracted token decoding and added
+  `optionalAuth`.
+- `backend/controllers/project.controller.js` — richer detail payload and
+  `applyToRole`.
+- `backend/routes/project.routes.js` — optional auth on detail and the nested
+  application route.
+- `backend/controllers/dashboard.controller.js` — includes `projectId` in sent
+  and received application entries.
+
+### Detail payload
+`GET /api/projects/:projectId` now returns:
+- `project` with the owner profile populated;
+- `roles` with applicant/accepted/pending counts, remaining spots, and the
+  viewer's application status;
+- `members` with active memberships, user summaries, and role titles;
+- `viewer` with owner/member flags and a role→status application map.
+
+Private and unlisted projects are visible only to their owner. Anonymous and
+non-owner requests receive `404`.
+
+### Apply endpoint
+`POST /api/projects/:projectId/roles/:roleId/applications` requires auth and
+CSRF. It rejects closed projects/roles, owners, existing members, filled roles,
+and duplicate applications (`409`). A valid request creates a `Pending`
+application and increments `applicantCount`.
+
+### UI
+- Hero with category/stage, status, commitment, members, and an “Apply to a
+  role” anchor.
+- About (why, audience, current status), milestones with progress, skills/tags,
+  team, and open roles.
+- Sidebar with project facts, owner profile/links/contact, and posted time.
+- Apply modal with an optional 1000-character message, inline errors, refresh on
+  success, and disabled states for owner/member/applied/closed/filled.
+- Signed-out apply actions route to `/account?next=/projects/:projectId`.
+
+### Verification
+- Unauthenticated apply returned `401`.
+- A fresh user applied successfully (`201`, `Pending`); viewer state and role
+  counts updated.
+- Duplicate application returned `409`.
+- Owner applying to their own project returned `400`.
+- Private project: anonymous `404`, owner `200`, non-owner `404`.
+- Dashboard sent/received applications now include `projectId`.
+- `npm run build` passed, including the dynamic `/projects/[projectId]` route.
+
+---
+
+## 8. Verification summary
 
 | Check | Result |
 | --- | --- |
@@ -277,26 +383,33 @@ Rewritten file: `frontend/app/dashboard/page.jsx`
 | Facet counts | Passed |
 | Dashboard auth (401) | Passed |
 | Dashboard payload for two seed users | Passed |
-| Frontend production build | Passed (13 routes) |
+| Profile update + `getMe` round-trip | Passed |
+| Password change + restore | Passed |
+| Resume upload/download/delete | Passed |
+| Project detail (owner, roles, members, viewer) | Passed |
+| Application create / duplicate / owner / anonymous | Passed |
+| Private project visibility | Passed |
+| Frontend production build | Passed (13 routes + dynamic project page) |
 | Frontend lint | Not runnable — ESLint is not installed/declared |
 
 ---
 
-## 7. Known limitations and next steps
+## 9. Known limitations and next steps
 
-- **Applications are read-only.** There is no apply-to-project flow and no
-  accept/reject endpoint yet. `Application` records currently come only from
-  seeding.
-- **Project detail page is absent.** "View project" is not wired.
+- **Received applications are still read-only.** Applying now works, but owners
+  cannot accept or reject applications yet. Accepting should create a
+  membership, update role slots, and adjust project counts atomically.
+- **Resumes are stored on local disk.** Use durable object storage before
+  deploying to an ephemeral host. Project owners cannot download applicant
+  resumes yet.
 - **Bookmarks on Find Projects are local-only.**
 - **Recommendations are skill-overlap based**, using skills from the user's owned
-  projects. The `User` model has no skills/interests fields yet.
+  projects. The `User` model now has skills, but recommendations do not use
+  profile skills yet.
 - **Activity is derived**, not an append-only event log. If accurate history is
   required, add an `ActivityEvent` model.
-- **Task board and notifications are not implemented**; the Bell and Settings
-  buttons are intentional placeholders.
-- **Private project visibility is still not reachable** because read routes do not
-  use an optional-auth middleware. This existed before the dashboard work.
+- **Task board and notifications are not implemented**; the Bell button is an
+  intentional placeholder.
 - **Lint tooling is missing** from `frontend/package.json`. Add ESLint as a
   devDependency and a config before relying on `npm run lint`.
 - **Multiple lockfiles** remain (`bun.lock`, `package-lock.json`,
@@ -306,28 +419,42 @@ Rewritten file: `frontend/app/dashboard/page.jsx`
 
 ---
 
-## 8. Changed-file index
+## 10. Changed-file index
 
 ### Backend
 
+- `backend/models/User.model.js` — profile fields, links, availability,
+  experience level, resume metadata.
+- `backend/controllers/auth.controller.js` — public serializer, profile/password
+  updates, resume upload/download/delete.
+- `backend/routes/auth.routes.js` — profile, password, and resume routes.
+- `backend/middleware/upload.middleware.js` — validated resume upload.
+- `backend/middleware/auth.middleware.js` — shared token decoding + `optionalAuth`.
 - `backend/controllers/project.controller.js` — multi-value filters, regex
-  escaping, facet aggregation.
-- `backend/controllers/dashboard.controller.js` — new dashboard aggregate.
-- `backend/routes/dashboard.routes.js` — new authenticated route.
+  escaping, facets, rich detail payload, `applyToRole`.
+- `backend/routes/project.routes.js` — optional auth on detail, apply route.
+- `backend/controllers/dashboard.controller.js` — dashboard aggregate; application
+  `projectId` added.
+- `backend/routes/dashboard.routes.js` — dashboard route.
 - `backend/server.js` — mounts `/api/dashboard`.
-- `backend/scripts/seedData.js` — seed content.
-- `backend/scripts/seedProjects.js` — idempotent seeding; roles, memberships,
-  applications, timestamps.
-- `backend/package.json` — `seed` script.
+- `backend/scripts/seedData.js` — projects and enriched owner profiles.
+- `backend/scripts/seedProjects.js` — idempotent seed; roles, memberships,
+  applications, timestamps, owner profiles.
+- `backend/package.json` — `seed` script and `multer`.
 
 ### Frontend
 
+- `frontend/app/profile/page.jsx` — account settings, resume, password.
+- `frontend/app/projects/[projectId]/page.jsx` — project detail and applications.
+- `frontend/app/account/page.jsx` — safe post-login `next` redirect.
 - `frontend/app/find-projects/page.jsx` — server-side filtering, URL state,
-  multi-select, chips, mobile drawer, facets.
-- `frontend/app/dashboard/page.jsx` — live authenticated workspace.
+  multi-select, chips, mobile drawer, facets, project links.
+- `frontend/app/dashboard/page.jsx` — live workspace with project links.
+- `frontend/components/chip-picker.jsx` — shared skill/tag picker.
 - `frontend/components/multi-select.jsx` — reusable searchable multi-select.
-- `frontend/lib/api.js` — `getDashboard`, abort signal support.
+- `frontend/lib/api.js` — profile/password/resume/apply methods, abort support.
+- `frontend/lib/features/auth/authSlice.js` — `setUser`.
 - `frontend/lib/features/projects/projectsSlice.js` — abort handling, facets.
-- `frontend/lib/features/dashboard/dashboardSlice.js` — new slice.
+- `frontend/lib/features/dashboard/dashboardSlice.js` — dashboard slice.
 - `frontend/lib/store.js` — registers the dashboard slice.
 - `frontend/lib/data/dashboard.data.js` — removed (unused fixture).

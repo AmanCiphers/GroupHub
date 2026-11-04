@@ -546,10 +546,13 @@ function FindProjectsContent() {
                               </p>
                             </div>
                           </div>
-                          <button className="inline-flex h-11 w-full items-center justify-center gap-2 border border-ink bg-transparent px-4 text-sm font-black text-ink transition hover:bg-ink hover:text-white">
+                          <Link
+                            href={`/projects/${project._id}`}
+                            className="inline-flex h-11 w-full items-center justify-center gap-2 border border-ink bg-transparent px-4 text-sm font-black text-ink transition hover:bg-ink hover:text-white"
+                          >
                             View project
                             <ArrowUpRight className="size-4" />
-                          </button>
+                          </Link>
                         </div>
                       </div>
                     </div>

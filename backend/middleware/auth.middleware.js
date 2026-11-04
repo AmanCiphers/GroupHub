@@ -1,5 +1,18 @@
-import jwt from 'jsonwebtoken';
 import { jwtDecrypt } from 'jose';
+
+const decodeAccessToken = async (token) => {
+    const encryptionKey = Buffer.from(
+        process.env.JWT_ENCRYPTION_KEY,
+        'base64'
+    );
+
+    const { payload } = await jwtDecrypt(token, encryptionKey, {
+        keyManagementAlgorithms: ['dir'],
+        contentEncryptionAlgorithms: ['A256GCM'],
+    });
+
+    return payload;
+};
 
 export const authenticateToken = async (req, res, next) => {
     const token = req.cookies?.accessToken;
@@ -11,18 +24,7 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     try {
-        const encryptionKey = Buffer.from(
-            process.env.JWT_ENCRYPTION_KEY,
-            'base64'
-        );
-
-        const { payload } = await jwtDecrypt(token, encryptionKey, {
-            keyManagementAlgorithms: ['dir'],
-            contentEncryptionAlgorithms: ['A256GCM'],
-        });
-
-        req.user = payload;
-
+        req.user = await decodeAccessToken(token);
         return next();
     } catch (error) {
         return res.status(401).json({
@@ -31,4 +33,16 @@ export const authenticateToken = async (req, res, next) => {
     }
 };
 
+export const optionalAuth = async (req, _res, next) => {
+    const token = req.cookies?.accessToken;
 
+    if (token) {
+        try {
+            req.user = await decodeAccessToken(token);
+        } catch {
+            req.user = undefined;
+        }
+    }
+
+    return next();
+};

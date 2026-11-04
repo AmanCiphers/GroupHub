@@ -1,5 +1,7 @@
 import Project from "../models/Project.model.js";
 import Membership from "../models/Membership.model.js";
+import ProjectRole from "../models/ProjectRole.model.js";
+import Application from "../models/Application.model.js";
 import {
   PROJECT_CATEGORIES,
   PROJECT_STAGES,
@@ -392,23 +394,241 @@ export const getProjectById = async (req, res) => {
   try {
     const project = await Project.findById(req.params.projectId).populate(
       "ownerId",
-      "name email",
+      "name email headline bio location skills links createdAt",
     );
 
     if (!project) {
       return res.status(404).json({ message: "Project not found." });
     }
 
+    const ownerUserId =
+      project.ownerId?._id?.toString() || project.ownerId?.toString();
+    const viewerId = req.user?.userId;
+
     if (
       project.visibility !== "public" &&
-      (!req.user || req.user.userId !== project.ownerId._id.toString())
+      (!viewerId || viewerId !== ownerUserId)
     ) {
       return res.status(404).json({ message: "Project not found." });
     }
 
-    return res.status(200).json({ project });
+    const [roles, members, applicationCounts, viewerMembership, viewerApplicationRows] =
+      await Promise.all([
+        ProjectRole.find({ projectId: project._id }).sort({ createdAt: 1 }),
+        Membership.find({ projectId: project._id, status: "Active" })
+          .populate(
+            "userId",
+            "name email headline bio location skills links",
+          )
+          .populate("roleId", "title")
+          .sort({ createdAt: 1 }),
+        Application.aggregate([
+          { $match: { projectId: project._id } },
+          {
+            $group: {
+              _id: { roleId: "$projectRoleId", status: "$status" },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+        viewerId
+          ? Membership.exists({
+              projectId: project._id,
+              userId: viewerId,
+              status: "Active",
+            })
+          : false,
+        viewerId
+          ? Application.find({
+              projectId: project._id,
+              applicantId: viewerId,
+            }).select("projectRoleId status")
+          : [],
+      ]);
+
+    const countsByRole = new Map();
+    for (const row of applicationCounts) {
+      const roleId = row._id.roleId.toString();
+      const counts = countsByRole.get(roleId) || {
+        applicants: 0,
+        accepted: 0,
+        pending: 0,
+      };
+      counts.applicants += row.count;
+      if (row._id.status === "Accepted") counts.accepted += row.count;
+      if (row._id.status === "Pending") counts.pending += row.count;
+      countsByRole.set(roleId, counts);
+    }
+
+    const viewerApplications = Object.fromEntries(
+      viewerApplicationRows.map((application) => [
+        application.projectRoleId.toString(),
+        application.status,
+      ]),
+    );
+
+    const roleData = roles.map((role) => {
+      const counts = countsByRole.get(role._id.toString()) || {
+        applicants: 0,
+        accepted: 0,
+        pending: 0,
+      };
+      return {
+        id: role._id,
+        title: role.title,
+        skills: role.skills || [],
+        slots: role.slots,
+        status: role.status,
+        applicants: counts.applicants,
+        accepted: counts.accepted,
+        pending: counts.pending,
+        spotsRemaining: Math.max(0, role.slots - counts.accepted),
+        viewerApplicationStatus:
+          viewerApplications[role._id.toString()] || null,
+      };
+    });
+
+    const memberData = members
+      .filter((member) => member.userId)
+      .map((member) => ({
+        id: member._id,
+        memberRole: member.memberRole,
+        roleTitle: member.roleId?.title || null,
+        joinedAt: member.createdAt,
+        user: {
+          id: member.userId._id,
+          name: member.userId.name,
+          headline: member.userId.headline || "",
+          bio: member.userId.bio || "",
+          location: member.userId.location || "",
+          skills: member.userId.skills || [],
+          links: member.userId.links || {},
+        },
+      }));
+
+    return res.status(200).json({
+      project,
+      roles: roleData,
+      members: memberData,
+      viewer: {
+        isOwner: Boolean(viewerId && viewerId === ownerUserId),
+        isMember: Boolean(viewerMembership) || Boolean(viewerId && viewerId === ownerUserId),
+        applications: viewerApplications,
+      },
+    });
   } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project not found." });
+    }
     logProjectEvent(`Get project error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const applyToRole = async (req, res) => {
+  try {
+    const { projectId, roleId } = req.params;
+    const rawMessage = req.body?.message;
+    const message = typeof rawMessage === "string" ? rawMessage.trim() : "";
+
+    if (message.length > 1000) {
+      return res.status(400).json({
+        message: "Application message cannot exceed 1000 characters.",
+      });
+    }
+
+    const [project, role] = await Promise.all([
+      Project.findById(projectId),
+      ProjectRole.findOne({ _id: roleId, projectId }),
+    ]);
+
+    if (!project || !role) {
+      return res.status(404).json({ message: "Project or role not found." });
+    }
+
+    if (!["Recruiting", "Active"].includes(project.status)) {
+      return res.status(400).json({
+        message: "This project is not accepting applications.",
+      });
+    }
+
+    if (role.status !== "Open") {
+      return res.status(400).json({
+        message: "This role is not open for applications.",
+      });
+    }
+
+    if (project.ownerId.toString() === req.user.userId) {
+      return res.status(400).json({
+        message: "You cannot apply to your own project.",
+      });
+    }
+
+    const membership = await Membership.exists({
+      projectId: project._id,
+      userId: req.user.userId,
+      status: "Active",
+    });
+
+    if (membership) {
+      return res.status(400).json({
+        message: "You are already a member of this project.",
+      });
+    }
+
+    const accepted = await Application.countDocuments({
+      projectRoleId: role._id,
+      status: "Accepted",
+    });
+
+    if (accepted >= role.slots) {
+      return res.status(400).json({
+        message: "This role is already filled.",
+      });
+    }
+
+    const existing = await Application.findOne({
+      projectRoleId: role._id,
+      applicantId: req.user.userId,
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        message: "You have already applied to this role.",
+      });
+    }
+
+    const application = await Application.create({
+      projectId: project._id,
+      projectRoleId: role._id,
+      applicantId: req.user.userId,
+      message,
+      status: "Pending",
+    });
+
+    await Project.updateOne(
+      { _id: project._id },
+      { $inc: { applicantCount: 1 } },
+    );
+
+    logProjectEvent(
+      `Application ${application._id} sent to ${role.title} on ${project.title}`,
+    );
+
+    return res.status(201).json({
+      message: "Application sent.",
+      application,
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({
+        message: "You have already applied to this role.",
+      });
+    }
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or role not found." });
+    }
+    logProjectEvent(`Apply to role error: ${error.message}`);
     return res.status(500).json({ message: "Internal server error." });
   }
 };

@@ -193,8 +193,16 @@ function MobileMenu({ hiddenClass }) {
   }, [open, close])
 
   const links = user
-    ? navLinks
-    : [...navLinks, { href: "/account", label: "Account" }, { href: "/dashboard", label: "Dashboard" }]
+    ? [
+        ...navLinks,
+        { href: "/dashboard", label: "Dashboard" },
+        { href: "/profile", label: "Profile" },
+      ]
+    : [
+        ...navLinks,
+        { href: "/account", label: "Account" },
+        { href: "/dashboard", label: "Dashboard" },
+      ]
 
   const handleLogout = async () => {
     close()

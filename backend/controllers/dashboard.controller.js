@@ -174,6 +174,7 @@ export const getDashboard = async (req, res) => {
         .filter((application) => application.projectId)
         .map((application) => ({
           id: application._id,
+          projectId: application.projectId._id,
           projectTitle: application.projectId.title,
           roleTitle: application.projectRoleId?.title || "Contributor",
           status: application.status,
@@ -183,6 +184,7 @@ export const getDashboard = async (req, res) => {
         .filter((application) => application.projectId)
         .map((application) => ({
           id: application._id,
+          projectId: application.projectId._id,
           projectTitle: application.projectId.title,
           roleTitle: application.projectRoleId?.title || "Contributor",
           applicantName: application.applicantId?.name || "Unknown applicant",
