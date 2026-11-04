@@ -102,7 +102,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-sans);
+    font-family: var(--font-cursive);
+    font-size: 1.0625rem;
+    letter-spacing: 0.005em;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-cursive);
