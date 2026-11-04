@@ -6,6 +6,12 @@ import { Field } from "@/components/field"
 
 import { PageHeader } from "@/components/page-header"
 import { contactMethods, faqs } from "@/lib/data/contact.data"
+import {
+  CardSkeleton,
+  TextSkeleton,
+  FormFieldSkeleton,
+  PageHeaderSkeleton,
+} from "@/components/skeleton"
 
 /** Contact page: methods + simple contact form. */
 export default function ContactPage() {
@@ -22,7 +28,9 @@ export default function ContactPage() {
         eyebrow="Contact"
         title="Tell us what would make collaboration easier."
         description="Questions, feedback, project support, or partnership ideas. Send it over and we'll route it to the right place."
-      />
+      >
+        <PageHeaderSkeleton />
+      </PageHeader>
 
       <section className="px-6 py-12 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 md:grid-cols-3">
@@ -100,3 +108,53 @@ export default function ContactPage() {
   )
 }
 
+/** Static page — skeleton for consistency. */
+function ContactLoading() {
+  return (
+    <div className="min-h-screen bg-canvas text-ink">
+      <PageHeader
+        eyebrow="Contact"
+        title="Tell us what would make collaboration easier."
+        description="Questions, feedback, project support, or partnership ideas."
+      >
+        <PageHeaderSkeleton />
+      </PageHeader>
+
+      <section className="px-6 py-12 sm:px-10 lg:px-20 xl:px-28">
+        <div className="grid gap-4 md:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-line bg-surface px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
+        <div className="grid gap-12 lg:grid-cols-[1fr_0.9fr]">
+          <div>
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48 mb-8" />
+            <div className="space-y-4">
+              <FormFieldSkeleton />
+              <FormFieldSkeleton />
+              <FormFieldSkeleton />
+              <FormFieldSkeleton />
+              <FormFieldSkeleton />
+              <Skeleton className="h-11 w-40" />
+            </div>
+          </div>
+          <div>
+            <Skeleton className="h-8 w-64 mb-8" />
+            <div className="grid gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="border border-line bg-white p-5">
+                  <Skeleton className="h-5 w-48 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}

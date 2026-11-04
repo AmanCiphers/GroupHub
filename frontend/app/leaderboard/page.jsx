@@ -1,7 +1,16 @@
+"use client"
+
 import { Award, Flame, Medal, Rocket, Star, Trophy, Users } from "lucide-react"
 import { getInitials } from "@/lib/utils"
 import { PageHeader } from "@/components/page-header"
 import { howToClimb, leaderboard, stats, topContributors } from "@/lib/data/leaderboard.data"
+import {
+  CardSkeleton,
+  TextSkeleton,
+  StatCardSkeleton,
+  PageHeaderSkeleton,
+  ProfilePreviewSkeleton,
+} from "@/components/skeleton"
 
 /** Leaderboard: top contributors, full list, how-to-climb. */
 export default function LeaderboardPage() {
@@ -11,7 +20,9 @@ export default function LeaderboardPage() {
         eyebrow="Leaderboard"
         title="Recognize the builders who keep teams moving."
         description="Points reward completed work, mentorship, reviews, and reliable project momentum."
-      />
+      >
+        <PageHeaderSkeleton />
+      </PageHeader>
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -122,6 +133,72 @@ function Metric({ value, label }) {
     <div>
       <p className="text-xl font-black">{value}</p>
       <p className="text-xs font-black uppercase tracking-[0.12em] opacity-60">{label}</p>
+    </div>
+  )
+}
+
+/** Static page — no data fetching, but keep skeleton for consistency. */
+function LeaderboardLoading() {
+  return (
+    <div className="min-h-screen bg-canvas text-ink">
+      <PageHeader
+        eyebrow="Leaderboard"
+        title="Recognize the builders who keep teams moving."
+        description="Points reward completed work, mentorship, reviews, and reliable project momentum."
+      >
+        <PageHeaderSkeleton />
+      </PageHeader>
+
+      <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+
+      <section className="px-6 pb-10 sm:px-10 lg:px-20 xl:px-28">
+        <div className="mb-5 flex flex-wrap gap-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-28" />
+          ))}
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
+
+      <section className="border-y border-line bg-surface px-6 py-12 sm:px-10 lg:px-20 xl:px-28">
+        <div className="grid gap-3">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="border border-line bg-white p-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-10 rounded-full" />
+                <div>
+                  <Skeleton className="h-5 w-32 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-6 py-16 sm:px-10 lg:px-20 xl:px-28">
+        <Skeleton className="h-8 w-64 mb-6" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
