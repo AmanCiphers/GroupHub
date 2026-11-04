@@ -65,12 +65,12 @@
 
   --color-ink: #171717;
   --color-ink-soft: #31312f;
-  --color-body: #4a4945;
-  --color-subtle: #55544f;
-  --color-quiet: #62615d;
-  --color-faint: #77766f;
-  --color-line: #d9d8d2;
-  --color-line-strong: #c9c8c1;
+  --color-body: #3f3e3a;
+  --color-subtle: #4f4e49;
+  --color-quiet: #575651;
+  --color-faint: #6b6a63;
+  --color-line: #d4d2cb;
+  --color-line-strong: #c4c2ba;
   --color-canvas: #f7f7f3;
   --color-surface: #fbfbfa;
   --color-wash: #efeee8;
@@ -100,11 +100,28 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0.004em;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  ::selection {
+    background-color: var(--color-charcoal);
+    color: #ffffff;
   }
 }

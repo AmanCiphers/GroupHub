@@ -15,18 +15,19 @@ export function PageHeader({ eyebrowIcon: Icon, eyebrow, title, description, act
       <div className="grid gap-10 lg:grid-cols-[1fr_420px] lg:items-end">
         <div>
           {eyebrow && (
-            <p className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-quiet">
+            <p className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em] text-quiet">
               {Icon && <Icon className="size-4" />}
               {eyebrow}
+              <span aria-hidden="true" className="h-px w-8 bg-line-strong" />
             </p>
           )}
-          <h1 className="mt-5 max-w-4xl text-4xl font-black leading-[0.95] sm:text-6xl">
+          <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
             {title}
           </h1>
         </div>
         <div>
           {description && (
-            <p className="text-lg font-semibold leading-snug text-subtle">{description}</p>
+            <p className="max-w-lg text-lg font-normal leading-relaxed text-subtle">{description}</p>
           )}
           {actions}
         </div>

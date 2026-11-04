@@ -36,7 +36,7 @@ export function Footer() {
               <h1> x </h1>
               <img src="/white_clover.svg" alt="" className="h-12 w-auto" />
             </Link>
-            <p className="mt-5 max-w-sm text-sm font-semibold leading-relaxed text-white/65">
+            <p className="mt-5 max-w-sm text-sm font-normal leading-relaxed text-white/65">
               Turn early ideas into focused project teams with visible roles,
               useful matching, and real collaboration momentum.
             </p>
@@ -60,7 +60,7 @@ export function Footer() {
 
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h3 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+              <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-white">
                 {title}
               </h3>
               <ul className="mt-4 space-y-3">
@@ -68,7 +68,7 @@ export function Footer() {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm font-semibold text-white/60 transition-colors hover:text-white"
+                      className="text-sm font-normal text-white/60 transition-colors hover:text-white"
                     >
                       {link.label}
                     </Link>

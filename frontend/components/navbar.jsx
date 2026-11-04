@@ -55,7 +55,7 @@ export function Navbar() {
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-md font-medium text-white/78 transition-colors hover:text-white"
+                    className="text-sm font-medium tracking-wide text-white/80 transition-colors hover:text-white"
                   >
                     {link.label}
                   </Link>
@@ -87,8 +87,8 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-sm font-bold transition-colors hover:text-white ${
-                  pathname === link.href ? "text-white" : "text-white/62"
+                className={`text-sm font-medium tracking-wide transition-colors hover:text-white ${
+                  pathname === link.href ? "text-white" : "text-white/65"
                 }`}
               >
                 {link.label}
@@ -115,17 +115,17 @@ function AccountActions({ variant = "default" }) {
   const isHome = variant === "home"
 
   const accountClass = isHome
-    ? "text-lg font-medium transition-colors hover:text-quiet"
-    : "text-sm font-bold text-white/70 hover:text-white"
+    ? "text-sm font-medium tracking-wide transition-colors hover:text-quiet"
+    : "text-sm font-medium text-white/70 hover:text-white"
   const dashboardClass = isHome
-    ? "text-lg font-medium transition-colors hover:text-quiet"
-    : "border border-white px-4 py-2 text-sm font-black transition hover:bg-white hover:text-ink"
+    ? "text-sm font-medium tracking-wide transition-colors hover:text-quiet"
+    : "border border-white px-4 py-2 text-sm font-bold transition hover:bg-white hover:text-ink"
   const nameClass = isHome
-    ? "text-lg font-medium text-quiet"
-    : "text-sm font-bold text-white/70"
+    ? "text-sm font-medium text-quiet"
+    : "text-sm font-medium text-white/70"
   const logoutClass = isHome
-    ? "flex items-center gap-2 text-lg font-medium text-quiet transition-colors hover:text-ink"
-    : "flex items-center gap-2 text-sm font-bold text-white/70 transition-colors hover:text-white"
+    ? "flex items-center gap-2 text-sm font-medium text-quiet transition-colors hover:text-ink"
+    : "flex items-center gap-2 text-sm font-medium text-white/70 transition-colors hover:text-white"
 
   if (!user) {
     return (
