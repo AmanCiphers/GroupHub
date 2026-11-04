@@ -28,7 +28,15 @@ import {
   PROJECT_CATEGORIES,
   PROJECT_STAGES,
   SKILLS,
+  PROJECT_TAGS,
 } from "@/lib/data/enums"
+import {
+  Skeleton,
+  ListSkeleton,
+  ProjectCardSkeleton,
+  CardSkeleton,
+  TextSkeleton,
+} from "@/components/skeleton"
 
 function parseFilters(params) {
   return {
@@ -65,9 +73,58 @@ function initials(name) {
 }
 
 /** Project discovery with URL-synced, server-side filters. */
+
+function FindProjectsLoading() {
+  return (
+    <div className="min-h-screen bg-canvas text-ink">
+      <PageHeader
+        eyebrowIcon={Sparkles}
+        eyebrow="Role-based discovery"
+        title="Find projects that need what you can bring."
+        description="Browse teams by open roles, skill gaps, stage, and commitment. Save the promising ones, then apply when the fit is clear."
+      >
+        <div className="mt-8">
+          <Skeleton className="h-14 w-full max-w-xl" />
+        </div>
+      </PageHeader>
+
+      <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+        <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
+          <aside className="lg:sticky lg:top-24 lg:self-start">
+            <CardSkeleton className="h-[400px]" />
+            <CardSkeleton className="h-[300px]" />
+            <CardSkeleton className="h-[200px]" />
+            <CardSkeleton className="h-[150px]" />
+          </aside>
+
+          <div>
+            <div className="mb-5 flex flex-col gap-3 border-b border-line pb-5">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-10 w-40" />
+            </div>
+
+            <div className="grid gap-4">
+              <ListSkeleton items={4} component={ProjectCardSkeleton} />
+            </div>
+
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-20" />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export default function FindProjectsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
+    <Suspense fallback={<FindProjectsLoading />}>
       <FindProjectsContent />
     </Suspense>
   )
@@ -393,12 +450,20 @@ function FindProjectsContent() {
             </div>
 
             {isLoading && projects.length === 0 && (
-              <div className="border border-line bg-surface p-10 text-center">
-                <p className="text-xl font-black text-ink">Loading projects…</p>
+              <div className="grid gap-4">
+                <ListSkeleton items={4} component={ProjectCardSkeleton} />
               </div>
             )}
 
-            {status === "error" && (
+            {isLoading && projects.length > 0 && (
+              <div className="grid gap-4">
+                {projects.map((project) => (
+                  <ProjectCardSkeleton key={project._id} />
+                ))}
+              </div>
+            )}
+
+            {!isLoading && status === "error" && (
               <div className="mb-4 border border-red-300 bg-red-50 p-4 text-sm font-bold text-red-700">
                 {error || "Something went wrong while loading projects."}
               </div>

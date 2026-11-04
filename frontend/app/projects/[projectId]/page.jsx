@@ -30,6 +30,13 @@ import { PageHeader } from "@/components/page-header"
 import { api } from "@/lib/api"
 import { getInitials } from "@/lib/utils"
 import { ApplyWizard } from "@/components/apply-wizard"
+import {
+  CardSkeleton,
+  TextSkeleton,
+  RoleCardSkeleton,
+  ProfilePreviewSkeleton,
+  PageHeaderSkeleton,
+} from "@/components/skeleton"
 
 const projectStatusClass = {
   Recruiting: "border border-ink bg-white text-ink",
@@ -101,11 +108,35 @@ function ProjectLoading() {
         eyebrow="Project"
         title="Loading project…"
         description="Pulling together the team, roles, and progress."
-      />
+      >
+        <PageHeaderSkeleton />
+      </PageHeader>
+
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-          <div className="h-96 animate-pulse border border-line bg-surface" />
-          <div className="h-72 animate-pulse border border-line bg-surface" />
+          <div className="space-y-10">
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-5">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-8 w-28" />
+              </div>
+              <ListSkeleton items={3} component={RoleCardSkeleton} />
+            </div>
+          </div>
+
+          <aside className="space-y-6 self-start lg:sticky lg:top-24">
+            <CardSkeleton />
+            <ProfilePreviewSkeleton />
+            <CardSkeleton />
+          </aside>
         </div>
       </section>
     </div>

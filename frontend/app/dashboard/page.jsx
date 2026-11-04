@@ -21,6 +21,16 @@ import {
 
 import { PageHeader } from "@/components/page-header"
 import { fetchDashboard } from "@/lib/features/dashboard/dashboardSlice"
+import {
+  Skeleton,
+  StatCardSkeleton,
+  CardSkeleton,
+  ProjectCardSkeleton,
+  ApplicationRowSkeleton,
+  ProfilePreviewSkeleton,
+  PageHeaderSkeleton,
+  ListSkeleton,
+} from "@/components/skeleton"
 
 const projectStatusClass = {
   Recruiting: "border border-ink bg-white text-ink",
@@ -121,15 +131,45 @@ function DashboardLoading() {
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="h-28 animate-pulse border border-line bg-surface"
-            />
+            <StatCardSkeleton key={index} />
           ))}
         </div>
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
-          <div className="h-72 animate-pulse border border-line bg-surface" />
-          <div className="h-72 animate-pulse border border-line bg-surface" />
+          <div className="space-y-8">
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-5">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+                <Skeleton className="h-8 w-28" />
+              </div>
+              <ListSkeleton items={3} component={ProjectCardSkeleton} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-5">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <ListSkeleton items={3} component={ApplicationRowSkeleton} />
+            </div>
+            <div>
+              <div className="flex items-center justify-between border-b border-line pb-3 mb-5">
+                <div>
+                  <Skeleton className="h-6 w-32 mb-1" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <ListSkeleton items={2} component={CardSkeleton} />
+            </div>
+          </div>
+          <aside className="space-y-6 self-start lg:sticky lg:top-24">
+            <ProfilePreviewSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </aside>
         </div>
       </section>
     </div>

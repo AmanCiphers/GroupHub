@@ -26,6 +26,13 @@ import { api } from "@/lib/api"
 import { setUser } from "@/lib/features/auth/authSlice"
 import { COMMITMENT, EXPERIENCE_LEVEL, SKILLS } from "@/lib/data/enums"
 import { getInitials } from "@/lib/utils"
+import {
+  Skeleton,
+  CardSkeleton,
+  FormFieldSkeleton,
+  ProfilePreviewSkeleton,
+  TextSkeleton,
+} from "@/components/skeleton"
 
 const RESUME_MAX_BYTES = 5 * 1024 * 1024
 const RESUME_EXTENSIONS = [".pdf", ".doc", ".docx"]
@@ -140,8 +147,25 @@ function ProfileLoading() {
       />
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
-          <div className="h-96 animate-pulse border border-line bg-surface" />
-          <div className="h-72 animate-pulse border border-line bg-surface" />
+          <div className="space-y-8">
+            <CardSkeleton />
+            <div>
+              <Skeleton className="h-6 w-32 mb-1" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+
+          <aside className="space-y-6 self-start lg:sticky lg:top-24">
+            <ProfilePreviewSkeleton />
+            <CardSkeleton />
+            <CardSkeleton />
+          </aside>
         </div>
       </section>
     </div>
