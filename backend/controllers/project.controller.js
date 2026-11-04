@@ -2,6 +2,7 @@ import Project from "../models/Project.model.js";
 import Membership from "../models/Membership.model.js";
 import ProjectRole from "../models/ProjectRole.model.js";
 import Application from "../models/Application.model.js";
+import User from "../models/User.model.js";
 import {
   PROJECT_CATEGORIES,
   PROJECT_STAGES,
@@ -12,6 +13,9 @@ import {
   COMPENSATION,
   EXPERIENCE_LEVEL,
 } from "../utils/enums.js";
+import { copyProfileResumeToApplication, applicationResumeDirectory } from "../middleware/upload.middleware.js";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 const logProjectEvent = (message) => {
   console.log("========================================");
@@ -526,16 +530,87 @@ export const getProjectById = async (req, res) => {
 };
 
 export const applyToRole = async (req, res) => {
+  const uploadedFilePath = req.file
+    ? path.join(applicationResumeDirectory, req.file.filename)
+    : null;
+  let copiedFilePath = null;
+
+  const cleanup = async () => {
+    if (uploadedFilePath) {
+      await fs.unlink(uploadedFilePath).catch(() => {});
+    }
+    if (copiedFilePath) {
+      await fs.unlink(copiedFilePath).catch(() => {});
+    }
+  };
+
   try {
     const { projectId, roleId } = req.params;
+
     const rawMessage = req.body?.message;
     const message = typeof rawMessage === "string" ? rawMessage.trim() : "";
 
+    if (!message) {
+      await cleanup();
+      return res.status(400).json({
+        message: "Please tell the owner why you are interested.",
+      });
+    }
     if (message.length > 1000) {
+      await cleanup();
       return res.status(400).json({
         message: "Application message cannot exceed 1000 characters.",
       });
     }
+
+    const experience = typeof req.body?.experience === "string"
+      ? req.body.experience.trim().slice(0, 1000)
+      : "";
+    let portfolioUrl = typeof req.body?.portfolioUrl === "string"
+      ? req.body.portfolioUrl.trim()
+      : "";
+    if (portfolioUrl) {
+      try {
+        const u = portfolioUrl.startsWith("http")
+          ? new URL(portfolioUrl)
+          : new URL(`https://${portfolioUrl}`);
+        if (!["http:", "https:"].includes(u.protocol)) throw new Error();
+        portfolioUrl = u.toString();
+      } catch {
+        await cleanup();
+        return res.status(400).json({
+          message: "Portfolio URL must be a valid http(s) address.",
+        });
+      }
+    }
+
+    const availability = typeof req.body?.availability === "string"
+      ? req.body.availability
+      : undefined;
+    if (availability && !COMMITMENT.includes(availability)) {
+      await cleanup();
+      return res.status(400).json({
+        message: "Select a valid availability option.",
+      });
+    }
+
+    const timezone = typeof req.body?.timezone === "string"
+      ? req.body.timezone.trim().slice(0, 80)
+      : "";
+
+    let startDate = undefined;
+    if (req.body?.startDate) {
+      const parsed = new Date(req.body.startDate);
+      if (isNaN(parsed.getTime())) {
+        await cleanup();
+        return res.status(400).json({
+          message: "Earliest start date is invalid.",
+        });
+      }
+      startDate = parsed;
+    }
+
+    const useProfileResume = req.body?.useProfileResume === "true";
 
     const [project, role] = await Promise.all([
       Project.findById(projectId),
@@ -543,22 +618,26 @@ export const applyToRole = async (req, res) => {
     ]);
 
     if (!project || !role) {
+      await cleanup();
       return res.status(404).json({ message: "Project or role not found." });
     }
 
     if (!["Recruiting", "Active"].includes(project.status)) {
+      await cleanup();
       return res.status(400).json({
         message: "This project is not accepting applications.",
       });
     }
 
     if (role.status !== "Open") {
+      await cleanup();
       return res.status(400).json({
         message: "This role is not open for applications.",
       });
     }
 
     if (project.ownerId.toString() === req.user.userId) {
+      await cleanup();
       return res.status(400).json({
         message: "You cannot apply to your own project.",
       });
@@ -571,6 +650,7 @@ export const applyToRole = async (req, res) => {
     });
 
     if (membership) {
+      await cleanup();
       return res.status(400).json({
         message: "You are already a member of this project.",
       });
@@ -582,6 +662,7 @@ export const applyToRole = async (req, res) => {
     });
 
     if (accepted >= role.slots) {
+      await cleanup();
       return res.status(400).json({
         message: "This role is already filled.",
       });
@@ -593,9 +674,44 @@ export const applyToRole = async (req, res) => {
     });
 
     if (existing) {
+      await cleanup();
       return res.status(409).json({
         message: "You have already applied to this role.",
       });
+    }
+
+    let resumeMeta = undefined;
+
+    if (req.file) {
+      resumeMeta = {
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        source: "upload",
+        uploadedAt: new Date(),
+      };
+    } else if (useProfileResume) {
+      const applicant = await User.findById(req.user.userId).select("resume");
+      if (!applicant?.resume?.filename) {
+        await cleanup();
+        return res.status(400).json({
+          message: "Your profile does not have a resume to use.",
+        });
+      }
+      const copiedFilename = await copyProfileResumeToApplication(
+        req.user.userId,
+        applicant.resume.filename,
+      );
+      copiedFilePath = path.join(applicationResumeDirectory, copiedFilename);
+      resumeMeta = {
+        filename: copiedFilename,
+        originalName: applicant.resume.originalName,
+        mimeType: applicant.resume.mimeType,
+        size: applicant.resume.size,
+        source: "profile",
+        uploadedAt: new Date(),
+      };
     }
 
     const application = await Application.create({
@@ -603,6 +719,12 @@ export const applyToRole = async (req, res) => {
       projectRoleId: role._id,
       applicantId: req.user.userId,
       message,
+      experience,
+      portfolioUrl,
+      availability,
+      timezone,
+      startDate,
+      resume: resumeMeta,
       status: "Pending",
     });
 
@@ -615,11 +737,24 @@ export const applyToRole = async (req, res) => {
       `Application ${application._id} sent to ${role.title} on ${project.title}`,
     );
 
+    const responseResume = resumeMeta
+      ? {
+          originalName: resumeMeta.originalName,
+          size: resumeMeta.size,
+          source: resumeMeta.source,
+          uploadedAt: resumeMeta.uploadedAt,
+        }
+      : null;
+
     return res.status(201).json({
       message: "Application sent.",
-      application,
+      application: {
+        ...application.toObject(),
+        resume: responseResume,
+      },
     });
   } catch (error) {
+    await cleanup();
     if (isDuplicateKeyError(error)) {
       return res.status(409).json({
         message: "You have already applied to this role.",
@@ -629,6 +764,42 @@ export const applyToRole = async (req, res) => {
       return res.status(404).json({ message: "Project or role not found." });
     }
     logProjectEvent(`Apply to role error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const downloadApplicationResume = async (req, res) => {
+  try {
+    const { projectId, applicationId } = req.params;
+
+    const application = await Application.findById(applicationId);
+    if (!application || application.projectId.toString() !== projectId) {
+      return res.status(404).json({ message: "Application not found." });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can download resumes." });
+    }
+
+    if (!application.resume?.filename) {
+      return res.status(404).json({ message: "No resume attached to this application." });
+    }
+
+    const filePath = path.join(applicationResumeDirectory, application.resume.filename);
+    await fs.access(filePath);
+
+    res.download(filePath, application.resume.originalName, (err) => {
+      if (err) {
+        logProjectEvent(`Resume download error: ${err.message}`);
+      }
+    });
+  } catch (error) {
+    logProjectEvent(`Download application resume error: ${error.message}`);
     return res.status(500).json({ message: "Internal server error." });
   }
 };

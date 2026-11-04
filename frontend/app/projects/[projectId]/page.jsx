@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
@@ -24,12 +24,12 @@ import {
   Target,
   UserPlus,
   Users,
-  X,
 } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { api } from "@/lib/api"
 import { getInitials } from "@/lib/utils"
+import { ApplyWizard } from "@/components/apply-wizard"
 
 const projectStatusClass = {
   Recruiting: "border border-ink bg-white text-ink",
@@ -124,11 +124,7 @@ export default function ProjectPage() {
   const [reloadKey, setReloadKey] = useState(0)
 
   const [activeRole, setActiveRole] = useState(null)
-  const [applyMessage, setApplyMessage] = useState("")
-  const [applyError, setApplyError] = useState(null)
-  const [applyBusy, setApplyBusy] = useState(false)
   const [applySuccess, setApplySuccess] = useState(null)
-  const textareaRef = useRef(null)
 
   useEffect(() => {
     if (!projectId) return
@@ -156,82 +152,6 @@ export default function ProjectPage() {
     return () => controller.abort()
   }, [projectId, reloadKey])
 
-  useEffect(() => {
-    if (!activeRole) return
-    document.body.style.overflow = "hidden"
-    textareaRef.current?.focus()
-    const handleKey = (event) => {
-      if (event.key === "Escape" && !applyBusy) closeApply()
-    }
-    document.addEventListener("keydown", handleKey)
-    return () => {
-      document.body.style.overflow = ""
-      document.removeEventListener("keydown", handleKey)
-    }
-  }, [activeRole, applyBusy])
-
-  if (status === "loading" && !data) return <ProjectLoading />
-
-  if (status === "notfound" || status === "error") {
-    return (
-      <div className="min-h-screen bg-canvas text-ink">
-        <PageHeader
-          eyebrow="Project"
-          title={status === "notfound" ? "Project not found." : "Could not load this project."}
-          description={
-            status === "notfound"
-              ? "This project may have been removed or is not public."
-              : "The project could not reach the API. Try again in a moment."
-          }
-          actions={
-            <Link
-              href="/find-projects"
-              className="inline-flex h-11 items-center gap-2 border border-ink bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
-            >
-              <ArrowLeft className="size-4" />
-              Back to projects
-            </Link>
-          }
-        />
-        {status === "error" && (
-          <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
-            <button
-              onClick={() => setReloadKey((key) => key + 1)}
-              className="inline-flex h-11 items-center gap-2 border border-ink px-5 text-sm font-black transition hover:bg-ink hover:text-white"
-            >
-              <RefreshCw className="size-4" />
-              Retry
-            </button>
-            {error && <p className="mt-3 text-sm font-semibold text-subtle">{error}</p>}
-          </section>
-        )}
-      </div>
-    )
-  }
-
-  if (!data) return <ProjectLoading />
-
-  const { project, roles = [], members = [], viewer = {} } = data
-  const owner = project.ownerId || {}
-  const acceptsApplications = ["Recruiting", "Active"].includes(project.status)
-
-  const milestones = project.milestones || []
-  const doneMilestones = milestones.filter(
-    (milestone) => milestone.status === "Done"
-  ).length
-  const progress =
-    milestones.length > 0
-      ? Math.round((doneMilestones / milestones.length) * 100)
-      : 0
-
-  const openRoles = roles.filter((role) => role.status === "Open")
-
-  const closeApply = () => {
-    setActiveRole(null)
-    setApplyMessage("")
-    setApplyError(null)
-  }
-
   const startApply = (role) => {
     if (!user) {
       router.push(
@@ -241,33 +161,16 @@ export default function ProjectPage() {
     }
     setApplySuccess(null)
     setActiveRole(role)
-    setApplyMessage("")
-    setApplyError(null)
   }
 
-  const submitApplication = async (event) => {
-    event.preventDefault()
-    if (!activeRole) return
+  const onApplyClose = () => {
+    setActiveRole(null)
+  }
 
-    setApplyBusy(true)
-    setApplyError(null)
-    try {
-      await api.applyToRole(
-        projectId,
-        activeRole.id,
-        applyMessage.trim(),
-        csrfToken
-      )
-      setApplySuccess(`Application sent for ${activeRole.title}.`)
-      closeApply()
-      setReloadKey((key) => key + 1)
-    } catch (applyErrorValue) {
-      setApplyError(
-        applyErrorValue.message || "Could not send your application."
-      )
-    } finally {
-      setApplyBusy(false)
-    }
+  const onApplySuccess = (message) => {
+    setApplySuccess(message)
+    setActiveRole(null)
+    setReloadKey((key) => key + 1)
   }
 
   const renderApplyButton = (role) => {
@@ -338,6 +241,62 @@ export default function ProjectPage() {
       </button>
     )
   }
+
+  if (status === "loading" && !data) return <ProjectLoading />
+
+  if (status === "notfound" || status === "error") {
+    return (
+      <div className="min-h-screen bg-canvas text-ink">
+        <PageHeader
+          eyebrow="Project"
+          title={status === "notfound" ? "Project not found." : "Could not load this project."}
+          description={
+            status === "notfound"
+              ? "This project may have been removed or is not public."
+              : "The project could not reach the API. Try again in a moment."
+          }
+          actions={
+            <Link
+              href="/find-projects"
+              className="inline-flex h-11 items-center gap-2 border border-ink bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
+            >
+              <ArrowLeft className="size-4" />
+              Back to projects
+            </Link>
+          }
+        />
+        {status === "error" && (
+          <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+            <button
+              onClick={() => setReloadKey((key) => key + 1)}
+              className="inline-flex h-11 items-center gap-2 border border-ink px-5 text-sm font-black transition hover:bg-ink hover:text-white"
+            >
+              <RefreshCw className="size-4" />
+              Retry
+            </button>
+            {error && <p className="mt-3 text-sm font-semibold text-subtle">{error}</p>}
+          </section>
+        )}
+      </div>
+    )
+  }
+
+  if (!data) return <ProjectLoading />
+
+  const { project, roles = [], members = [], viewer = {} } = data
+  const owner = project.ownerId || {}
+  const acceptsApplications = ["Recruiting", "Active"].includes(project.status)
+
+  const milestones = project.milestones || []
+  const doneMilestones = milestones.filter(
+    (milestone) => milestone.status === "Done"
+  ).length
+  const progress =
+    milestones.length > 0
+      ? Math.round((doneMilestones / milestones.length) * 100)
+      : 0
+
+  const openRoles = roles.filter((role) => role.status === "Open")
 
   const ownerLinks = [
     { key: "github", label: "GitHub", icon: Github, href: owner.links?.github },
@@ -777,91 +736,14 @@ export default function ProjectPage() {
       </section>
 
       {activeRole && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 px-4 py-8"
-          onClick={() => !applyBusy && closeApply()}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="apply-title"
-            className="w-full max-w-lg border border-ink bg-surface p-6"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-faint">
-                  Apply to
-                </p>
-                <h2 id="apply-title" className="mt-1 text-2xl font-black">
-                  {activeRole.title}
-                </h2>
-                <p className="mt-1 text-sm font-semibold text-subtle">
-                  {project.title}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={closeApply}
-                disabled={applyBusy}
-                aria-label="Close application"
-                className="flex size-9 shrink-0 items-center justify-center border border-line bg-white transition hover:border-ink disabled:opacity-50"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <form onSubmit={submitApplication} className="mt-6 space-y-4">
-              <div>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
-                    Message to the owner (optional)
-                  </label>
-                  <span className="text-xs font-semibold text-faint">
-                    {applyMessage.length}/1000
-                  </span>
-                </div>
-                <textarea
-                  ref={textareaRef}
-                  maxLength={1000}
-                  className="min-h-32 w-full border border-line bg-white p-3 font-semibold outline-none focus:border-ink"
-                  value={applyMessage}
-                  onChange={(event) => setApplyMessage(event.target.value)}
-                  placeholder="Share why you are interested, relevant experience, or what you would like to help with."
-                />
-              </div>
-
-              {applyError && (
-                <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-                  {applyError}
-                </p>
-              )}
-
-              <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                <button
-                  type="button"
-                  onClick={closeApply}
-                  disabled={applyBusy}
-                  className="inline-flex h-11 items-center justify-center border border-ink px-5 text-sm font-black transition hover:bg-wash disabled:opacity-60"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={applyBusy}
-                  className="inline-flex h-11 items-center justify-center gap-2 bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink disabled:opacity-60"
-                >
-                  {applyBusy ? (
-                    <RefreshCw className="size-4 animate-spin" />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  {applyBusy ? "Sending…" : "Send application"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ApplyWizard
+          project={project}
+          role={activeRole}
+          user={user}
+          csrfToken={csrfToken}
+          onClose={onApplyClose}
+          onSuccess={onApplySuccess}
+        />
       )}
     </div>
   )

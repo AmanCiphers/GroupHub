@@ -1,5 +1,21 @@
 import mongoose from "mongoose";
-import { APPLICATION_STATUS } from "../utils/enums.js";
+import { APPLICATION_STATUS, COMMITMENT } from "../utils/enums.js";
+
+const resumeSchema = new mongoose.Schema(
+  {
+    filename: { type: String, required: true },
+    originalName: { type: String, required: true },
+    mimeType: { type: String, required: true },
+    size: { type: Number, min: 0 },
+    source: {
+      type: String,
+      enum: ["profile", "upload"],
+      required: true,
+    },
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
 
 const applicationSchema = new mongoose.Schema(
   {
@@ -27,6 +43,43 @@ const applicationSchema = new mongoose.Schema(
       trim: true,
       maxlength: 1000,
       default: "",
+    },
+
+    experience: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+      default: "",
+    },
+
+    portfolioUrl: {
+      type: String,
+      trim: true,
+      maxlength: 300,
+      default: "",
+    },
+
+    availability: {
+      type: String,
+      enum: COMMITMENT,
+      default: undefined,
+    },
+
+    timezone: {
+      type: String,
+      trim: true,
+      maxlength: 80,
+      default: "",
+    },
+
+    startDate: {
+      type: Date,
+      default: undefined,
+    },
+
+    resume: {
+      type: resumeSchema,
+      default: undefined,
     },
 
     status: {

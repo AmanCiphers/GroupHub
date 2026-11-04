@@ -4,12 +4,14 @@ import {
   listProjects,
   getProjectById,
   applyToRole,
+  downloadApplicationResume,
 } from "../controllers/project.controller.js";
 import {
   authenticateToken,
   optionalAuth,
 } from "../middleware/auth.middleware.js";
 import { verifyCsrfToken } from "../middleware/csrf.middleware.js";
+import { uploadApplicationResume } from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
@@ -20,7 +22,13 @@ router.post(
   "/:projectId/roles/:roleId/applications",
   authenticateToken,
   verifyCsrfToken,
+  uploadApplicationResume,
   applyToRole,
+);
+router.get(
+  "/:projectId/applications/:applicationId/resume",
+  authenticateToken,
+  downloadApplicationResume,
 );
 
 export default router;

@@ -191,6 +191,14 @@ export const getDashboard = async (req, res) => {
           applicantEmail: application.applicantId?.email || "",
           status: application.status,
           appliedAt: application.createdAt,
+          resume: application.resume
+            ? {
+                originalName: application.resume.originalName,
+                size: application.resume.size,
+                source: application.resume.source,
+                uploadedAt: application.resume.uploadedAt,
+              }
+            : null,
         })),
       recommended: recommended.map((project) => ({
         id: project._id,

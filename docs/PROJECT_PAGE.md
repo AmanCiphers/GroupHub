@@ -1,6 +1,6 @@
 # GroupHub — Project Page & Applications
 
-**Status:** Implemented (applications are created as `Pending`)
+**Status:** Implemented (applications are created as `Pending`; multi-step wizard)
 **Route:** `/projects/[projectId]`
 **Last updated:** 2026-11-04
 
@@ -101,11 +101,18 @@ Role counts are computed from `Application` records grouped by role and status.
 
 ### `POST /api/projects/:projectId/roles/:roleId/applications`
 
-Auth + CSRF. Body:
+Auth + CSRF. Accepts `multipart/form-data` with the following fields:
 
-```json
-{ "message": "Optional note, up to 1000 characters." }
-```
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `message` | string | **yes** | Why you are interested (1–1000 chars). |
+| `experience` | string | no | Relevant experience (≤1000 chars). |
+| `portfolioUrl` | string | no | Link to portfolio/work sample (valid http(s) URL, ≤300 chars). |
+| `availability` | string | no | One of the `COMMITMENT` enum values. |
+| `timezone` | string | no | IANA timezone or free text (≤80 chars). |
+| `startDate` | string (date) | no | Earliest start date (ISO date). |
+| `useProfileResume` | boolean | no | `"true"` to attach the resume already stored in your profile. |
+| `resume` | file | no | PDF/DOC/DOCX ≤5 MB. Ignored when `useProfileResume=true`. |
 
 Rules:
 
@@ -116,12 +123,17 @@ Rules:
 - The role must not already have `slots` accepted applications.
 - One application per user per role (`409` on duplicate).
 - A user may apply to different roles on the same project.
+- If `useProfileResume=true` and the user has no profile resume, returns `400`.
 
 On success:
 
 - Creates an `Application` with `status: "Pending"`.
 - Increments `Project.applicantCount`.
-- Returns `201` with `{ message, application }`.
+- Returns `201` with `{ message, application }` where `application.resume` contains `{ originalName, size, source, uploadedAt }`.
+
+### `GET /api/projects/:projectId/applications/:applicationId/resume`
+
+Auth required. Only the project owner can download. Streams the resume file as an attachment. Returns `404` if no resume attached.
 
 ## 4. UI
 
@@ -149,6 +161,26 @@ On success:
   contact, posted time.
 - Share prompt.
 
+### Apply wizard (3 steps)
+
+**Step 1 — Your pitch**  
+- *Why this role?* (required, 1–1000 chars)  
+- *Relevant experience* (optional, ≤1000 chars)  
+- *Portfolio / work sample URL* (optional, validated URL)
+
+**Step 2 — Availability & resume**  
+- *Availability* (select from `COMMITMENT` enum, optional)  
+- *Timezone* (optional, ≤80 chars)  
+- *Earliest start date* (optional date picker)  
+- *Resume*: if a profile resume exists, three radio options:
+  - **Use resume from your profile** (selected by default) — shows file name and size.
+  - **Upload a different resume** — file input (PDF/DOC/DOCX ≤5 MB).
+  - **No resume**.
+  If no profile resume, only “Upload a resume (optional)” and “No resume”.
+
+**Step 3 — Review**  
+Summary of all entered fields and the chosen resume. Submit sends the application.
+
 ### Apply states
 
 | State | Action |
@@ -160,15 +192,13 @@ On success:
 | Project not recruiting | Disabled “Applications closed” |
 | Role not open | Disabled “Applications closed” |
 | No spots left | Disabled “Role filled” |
-| Eligible | “Apply now” opens the message modal |
+| Eligible | “Apply now” opens the wizard |
 
-### Apply modal
+### Apply wizard behaviour
 
-- Optional message, maximum 1000 characters with a live counter.
-- Escape, backdrop click, and close button all dismiss it while idle.
-- Shows API errors inline.
-- On success, closes, shows a confirmation, and refreshes the project data so
-  role counts and application state update.
+- Escape, backdrop click, and close button dismiss while idle.
+- Client-side validation per step with inline errors.
+- On success, closes, shows a confirmation toast, and refreshes the project data so role counts and application state update.
 
 ## 5. Links from elsewhere
 
@@ -178,25 +208,32 @@ On success:
 - Login supports a safe internal `next` path, so the apply flow resumes after
   authentication.
 
-## 6. Verification performed
+## 6. Owner resume access
+
+Project owners can download applicant resumes from the **Applications received**
+section on the dashboard. Each received application with a resume shows a
+“Resume” button that triggers a download.
+
+## 7. Verification performed
 
 - Project detail returned owner profile, roles, members, counts, and viewer
   state.
 - Unauthenticated apply returned `401`.
-- A new user applied successfully (`201`, `Pending`), and the viewer state and
-  role counts updated.
-- A second application to the same role returned `409`.
-- The project owner applying to their own project returned `400`.
-- Private project visibility: anonymous `404`, owner `200`, non-owner `404`.
-- Frontend production build passed.
+- A fresh user applied successfully (`201`, `Pending`); viewer state and role
+  counts updated.
+- Duplicate application returned `409`.
+- Owner applying to their own project returned `400`.
+- Private project: anonymous `404`, owner `200`, non-owner `404`.
+- Dashboard sent/received applications now include `projectId`.
+- Resume upload, profile-resume reuse, and owner download all worked.
+- Frontend production build passed, including the dynamic `/projects/[projectId]` route.
 
-## 7. Known limitations / future work
+## 8. Known limitations / future work
 
 - Owner accept/reject actions are not implemented; all applications stay
   `Pending`.
 - Accepting an application should eventually create a `Membership`, update role
   slots, and update project counts atomically.
-- Project owners cannot yet download applicant resumes.
 - No edit/archive project actions on the detail page.
 - Share is a placeholder prompt; no social integrations.
 - Activity is still derived rather than event-sourced.

@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux"
 import {
   ArrowUpRight,
   Bell,
+  FileText,
   FolderKanban,
   Inbox,
   Plus,
@@ -491,7 +492,37 @@ export default function DashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <StatusBadge status={application.status} kind="application" />
+                      <div className="flex items-center gap-3 sm:flex-row-reverse">
+                        <StatusBadge status={application.status} kind="application" />
+                        {application.resume && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const blob = await api.downloadApplicationResume(
+                                  application.projectId,
+                                  application.id
+                                )
+                                const url = window.URL.createObjectURL(blob)
+                                const a = document.createElement("a")
+                                a.href = url
+                                a.download = application.resume.originalName
+                                document.body.appendChild(a)
+                                a.click()
+                                a.remove()
+                                window.URL.revokeObjectURL(url)
+                              } catch (err) {
+                                console.error("Resume download failed", err)
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-subtle hover:text-ink"
+                            title="Download resume"
+                          >
+                            <FileText className="size-3.5" />
+                            Resume
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

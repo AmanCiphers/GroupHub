@@ -82,12 +82,35 @@ export const api = {
   listProjects: (params, signal) =>
     request(`/api/projects${toQueryString(params)}`, { signal }),
   getProject: (id, signal) => request(`/api/projects/${id}`, { signal }),
-  applyToRole: (projectId, roleId, message, csrfToken) =>
-    request(`/api/projects/${projectId}/roles/${roleId}/applications`, {
-      method: 'POST',
-      body: { message },
+  applyToRole: (projectId, roleId, payload, csrfToken) => {
+    const formData = new FormData()
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value === undefined || value === null) return
+      if (value instanceof File) {
+        formData.append(key, value)
+      } else if (typeof value === "boolean") {
+        formData.append(key, value ? "true" : "false")
+      } else if (value !== "") {
+        formData.append(key, value)
+      }
+    })
+    return request(`/api/projects/${projectId}/roles/${roleId}/applications`, {
+      method: "POST",
+      formData,
       csrfToken,
-    }),
+    })
+  },
+  downloadApplicationResume: async (projectId, applicationId) => {
+    const res = await fetch(
+      `${API_URL}/api/projects/${projectId}/applications/${applicationId}/resume`,
+      { credentials: "include" }
+    )
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      throw new Error(data.message || `Request failed (${res.status})`)
+    }
+    return res.blob()
+  },
   rewriteDescription: (payload, csrfToken) =>
     request('/api/ai/rewrite-description', { method: 'POST', body: payload, csrfToken }),
   recommendSkills: (payload, csrfToken) =>

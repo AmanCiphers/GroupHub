@@ -396,12 +396,13 @@ application and increments `applicantCount`.
 
 ## 9. Known limitations and next steps
 
-- **Received applications are still read-only.** Applying now works, but owners
-  cannot accept or reject applications yet. Accepting should create a
-  membership, update role slots, and adjust project counts atomically.
+- **Received applications are still read-only.** Applying now works (with a
+  three-step wizard and resume attachment), but owners cannot accept or reject
+  applications yet. Accepting should create a membership, update role slots, and
+  adjust project counts atomically.
 - **Resumes are stored on local disk.** Use durable object storage before
-  deploying to an ephemeral host. Project owners cannot download applicant
-  resumes yet.
+  deploying to an ephemeral host. Project owners **can now download applicant
+  resumes** from the dashboard "Applications received" section.
 - **Bookmarks on Find Projects are local-only.**
 - **Recommendations are skill-overlap based**, using skills from the user's owned
   projects. The `User` model now has skills, but recommendations do not use
@@ -425,16 +426,22 @@ application and increments `applicantCount`.
 
 - `backend/models/User.model.js` — profile fields, links, availability,
   experience level, resume metadata.
+- `backend/models/Application.model.js` — added experience, portfolioUrl,
+  availability, timezone, startDate, resume subdocument.
 - `backend/controllers/auth.controller.js` — public serializer, profile/password
   updates, resume upload/download/delete.
 - `backend/routes/auth.routes.js` — profile, password, and resume routes.
-- `backend/middleware/upload.middleware.js` — validated resume upload.
+- `backend/middleware/upload.middleware.js` — validated resume upload; added
+  `applicationResumeDirectory`, `uploadApplicationResume`,
+  `copyProfileResumeToApplication`.
 - `backend/middleware/auth.middleware.js` — shared token decoding + `optionalAuth`.
 - `backend/controllers/project.controller.js` — multi-value filters, regex
-  escaping, facets, rich detail payload, `applyToRole`.
-- `backend/routes/project.routes.js` — optional auth on detail, apply route.
+  escaping, facets, rich detail payload, `applyToRole` (multi-field wizard,
+  resume handling), `downloadApplicationResume`.
+- `backend/routes/project.routes.js` — optional auth on detail, apply route with
+  upload middleware, owner resume download route.
 - `backend/controllers/dashboard.controller.js` — dashboard aggregate; application
-  `projectId` added.
+  `projectId` added; resume metadata in received applications.
 - `backend/routes/dashboard.routes.js` — dashboard route.
 - `backend/server.js` — mounts `/api/dashboard`.
 - `backend/scripts/seedData.js` — projects and enriched owner profiles.
@@ -446,13 +453,17 @@ application and increments `applicantCount`.
 
 - `frontend/app/profile/page.jsx` — account settings, resume, password.
 - `frontend/app/projects/[projectId]/page.jsx` — project detail and applications.
+- `frontend/components/apply-wizard.jsx` — three-step application wizard with
+  pitch, availability/resume, and review steps.
 - `frontend/app/account/page.jsx` — safe post-login `next` redirect.
 - `frontend/app/find-projects/page.jsx` — server-side filtering, URL state,
   multi-select, chips, mobile drawer, facets, project links.
-- `frontend/app/dashboard/page.jsx` — live workspace with project links.
+- `frontend/app/dashboard/page.jsx` — live workspace with project links; resume
+  download button for received applications.
 - `frontend/components/chip-picker.jsx` — shared skill/tag picker.
 - `frontend/components/multi-select.jsx` — reusable searchable multi-select.
-- `frontend/lib/api.js` — profile/password/resume/apply methods, abort support.
+- `frontend/lib/api.js` — profile/password/resume/apply (FormData), resume
+  download, abort support.
 - `frontend/lib/features/auth/authSlice.js` — `setUser`.
 - `frontend/lib/features/projects/projectsSlice.js` — abort handling, facets.
 - `frontend/lib/features/dashboard/dashboardSlice.js` — dashboard slice.
