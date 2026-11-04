@@ -1,10 +1,63 @@
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, Check, CircleDot, Users } from "lucide-react"
-import { actions, projectRoles, steps } from "@/lib/data/home.data"
+import { actions, steps } from "@/lib/data/home.data"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8762"
+
+async function fetchLandingProjects() {
+  try {
+    const res = await fetch(`${API_URL}/api/projects/landing?limit=4`, {
+      next: { revalidate: 60 },
+    })
+    if (!res.ok) throw new Error("Failed to fetch")
+    const data = await res.json()
+    return data.projects || []
+  } catch {
+    return []
+  }
+}
+
+function ProjectCard({ project }) {
+  const openRoles = project.roles?.filter((r) => r.status === "Open") || []
+  const roleCount = openRoles.length
+  const statusLabel = roleCount > 0 ? `${roleCount} role${roleCount > 1 ? "s" : ""} open` : "Recruiting"
+
+  return (
+    <Link
+      href="/find-projects"
+      key={project._id}
+      className="group grid gap-4 rounded-md border border-line bg-white p-4 transition hover:border-ink sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
+    >
+      <div>
+        <div className="flex items-center gap-2 text-sm font-semibold text-quiet">
+          <CircleDot className="size-4" />
+          {statusLabel}
+        </div>
+        <h3 className="mt-2 text-xl font-black text-ink">
+          {project.title}
+        </h3>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {(project.roles || [])
+          .filter((r) => r.status === "Open")
+          .map((role) => (
+            <span
+              key={role._id || role.title}
+              className="rounded-full border border-line px-3 py-1 text-sm font-semibold text-ink-soft"
+            >
+              {role.title}
+            </span>
+          ))}
+      </div>
+    </Link>
+  )
+}
 
 /** Marketing landing page. */
-export default function HomePage() {
+export default async function HomePage() {
+  const projects = await fetchLandingProjects()
+
   return (
     <div className="bg-canvas text-ink">
       <section className="grid min-h-[100svh] grid-cols-1 lg:grid-cols-[1fr_29vw]">
@@ -75,33 +128,11 @@ export default function HomePage() {
           </div>
 
           <div className="grid gap-3">
-            {projectRoles.map((project) => (
-              <Link
-                href="/find-projects"
-                key={project.title}
-                className="group grid gap-4 rounded-md border border-line bg-white p-4 transition hover:border-ink sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
-              >
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-quiet">
-                    <CircleDot className="size-4" />
-                    {project.status}
-                  </div>
-                  <h3 className="mt-2 text-xl font-black text-ink">
-                    {project.title}
-                  </h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {project.roles.map((role) => (
-                    <span
-                      key={role}
-                      className="rounded-full border border-line px-3 py-1 text-sm font-semibold text-ink-soft"
-                    >
-                      {role}
-                    </span>
-                  ))}
-                </div>
-              </Link>
-            ))}
+            {projects.length > 0 ? (
+              projects.map((project) => <ProjectCard key={project._id} project={project} />)
+            ) : (
+              <p className="text-sm font-semibold text-quiet">No projects yet.</p>
+            )}
           </div>
         </div>
       </section>

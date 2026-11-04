@@ -904,3 +904,43 @@ export const downloadApplicationResume = async (req, res) => {
     return res.status(500).json({ message: "Internal server error." });
   }
 };
+
+export const getLandingProjects = async (req, res) => {
+  try {
+    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit, 10) || 4));
+
+    const projects = await Project.find({
+      visibility: "public",
+      status: { $in: ["Recruiting", "Active"] },
+    })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("ownerId", "name")
+      .lean();
+
+    const projectIds = projects.map((p) => p._id);
+
+    const roles = await ProjectRole.find({
+      projectId: { $in: projectIds },
+      status: "Open",
+    })
+      .select("projectId title skills slots status")
+      .lean();
+
+    const rolesByProject = roles.reduce((acc, role) => {
+      if (!acc[role.projectId]) acc[role.projectId] = [];
+      acc[role.projectId].push(role);
+      return acc;
+    }, {});
+
+    const enrichedProjects = projects.map((project) => ({
+      ...project,
+      roles: rolesByProject[project._id] || [],
+    }));
+
+    return res.status(200).json({ projects: enrichedProjects });
+  } catch (error) {
+    logProjectEvent(`Landing projects error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
