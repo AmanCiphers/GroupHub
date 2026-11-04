@@ -347,8 +347,7 @@ export default function ProjectPage() {
       <PageHeader
         eyebrow={`${project.category} · ${project.stage}`}
         title={project.title}
-        description={project.description}
-        actions={
+actions={
           <div className="mt-6 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status={project.status} />
@@ -395,6 +394,17 @@ export default function ProjectPage() {
                 About the project
               </h2>
               <div className="mt-5 grid gap-6">
+                {project.description && (
+                  <div className="border border-line bg-surface p-5">
+                    <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-quiet">
+                      <Lightbulb className="size-4" />
+                      Description
+                    </p>
+                    <p className="mt-3 font-semibold leading-relaxed text-subtle">
+                      {project.description}
+                    </p>
+                  </div>
+                )}
                 {project.whyBuilding && (
                   <div className="border border-line bg-surface p-5">
                     <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-quiet">
