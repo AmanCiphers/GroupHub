@@ -1,11 +1,11 @@
-import { Playfair_Display, Inter } from 'next/font/google'
+import { Archivo, Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 import { Providers } from './providers'
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/footer'
 
-const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-display" })
+const archivo = Archivo({ subsets: ["latin"], variable: "--font-display" })
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 export const metadata = {
@@ -20,7 +20,7 @@ export const metadata = {
 /** Root layout: fonts, providers, navbar, footer. */
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable} bg-background`}>
+    <html lang="en" className={`${archivo.variable} ${inter.variable} bg-background`}>
       <body className="font-sans antialiased min-h-screen flex flex-col">
         <Providers>
           <Navbar />

@@ -63,7 +63,7 @@ export default async function HomePage() {
       <section className="grid min-h-[100svh] grid-cols-1 lg:grid-cols-[1fr_29vw]">
         <div className="flex bg-charcoal px-6 pb-16 pt-36 text-white sm:px-10 sm:pb-20 lg:min-h-[90svh] lg:px-20 lg:pb-24 lg:pt-44 xl:px-28">
           <div className="flex w-full max-w-3xl flex-col items-center justify-center text-center sm:items-start sm:text-left">
-            <h1 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-4xl text-hero font-black tracking-tight text-white">
               Build what you couldn&apos;t alone.
             </h1>
 
@@ -122,7 +122,7 @@ export default async function HomePage() {
             <p className="text-sm font-bold uppercase tracking-[0.18em] text-quiet">
               Project-first
             </p>
-            <h2 className="mt-4 max-w-xl text-3xl font-semibold leading-[1.1] tracking-tight text-ink sm:text-5xl">
+            <h2 className="mt-4 max-w-xl text-display font-semibold tracking-tight text-ink">
               Turn loose ideas into teams with clear roles.
             </h2>
           </div>
@@ -143,7 +143,7 @@ export default async function HomePage() {
             <div className="flex size-12 items-center justify-center rounded-full bg-charcoal text-white">
               <Users className="size-5" />
             </div>
-            <h2 className="mt-5 text-3xl font-semibold leading-[1.1] tracking-tight text-ink sm:mt-6">
+            <h2 className="mt-5 text-display font-semibold tracking-tight text-ink sm:mt-6">
               Simple enough to start. Structured enough to finish.
             </h2>
           </div>

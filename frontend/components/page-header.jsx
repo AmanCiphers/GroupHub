@@ -21,7 +21,7 @@ export function PageHeader({ eyebrowIcon: Icon, eyebrow, title, description, act
               <span aria-hidden="true" className="h-px w-8 bg-line-strong" />
             </p>
           )}
-          <h1 className="mt-6 max-w-4xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
+          <h1 className="mt-6 max-w-4xl text-display font-black tracking-tight">
             {title}
           </h1>
         </div>

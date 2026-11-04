@@ -41,8 +41,14 @@
 
 @theme inline {
   --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-display: var(--font-display), 'Playfair Display', Georgia, serif;
+  --font-display: var(--font-display), 'Archivo', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Fluid display scale — headlines scale continuously instead of in stepped breakpoints. */
+  --text-hero: clamp(2.625rem, 5vw + 1.125rem, 5.25rem);
+  --text-hero--line-height: 1.02;
+  --text-display: clamp(1.875rem, 3.25vw + 0.75rem, 3.25rem);
+  --text-display--line-height: 1.08;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -104,20 +110,21 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-weight: 400;
     font-size: 1rem;
-    line-height: 1.7;
-    letter-spacing: 0.004em;
+    line-height: 1.6;
+    letter-spacing: -0.011em;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: -0.015em;
+    line-height: 1.08;
+    letter-spacing: -0.022em;
     text-wrap: balance;
   }
   ::selection {
