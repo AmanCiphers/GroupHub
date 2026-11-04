@@ -25,7 +25,7 @@ function ProjectCard({ project }) {
 
   return (
     <Link
-      href="/find-projects"
+      href={`/projects/${project._id}`}
       key={project._id}
       className="group grid gap-4 rounded-md border border-line bg-white p-4 transition hover:border-ink sm:grid-cols-[1fr_auto] sm:items-center sm:p-5"
     >

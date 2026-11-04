@@ -907,14 +907,14 @@ export const downloadApplicationResume = async (req, res) => {
 
 export const getLandingProjects = async (req, res) => {
   try {
-    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit, 10) || 4));
+    const limit = Math.min(5, Math.max(1, parseInt(req.query.limit, 10) || 3));
 
     const projects = await Project.find({
       visibility: "public",
       status: { $in: ["Recruiting", "Active"] },
     })
       .sort({ createdAt: -1 })
-      .limit(limit)
+      .limit(limit * 2) // fetch extra to filter for open roles
       .populate("ownerId", "name")
       .lean();
 
@@ -933,10 +933,13 @@ export const getLandingProjects = async (req, res) => {
       return acc;
     }, {});
 
-    const enrichedProjects = projects.map((project) => ({
-      ...project,
-      roles: rolesByProject[project._id] || [],
-    }));
+    const enrichedProjects = projects
+      .map((project) => ({
+        ...project,
+        roles: rolesByProject[project._id] || [],
+      }))
+      .filter((project) => project.roles.length > 0) // only projects with open roles
+      .slice(0, limit); // max 3
 
     return res.status(200).json({ projects: enrichedProjects });
   } catch (error) {
