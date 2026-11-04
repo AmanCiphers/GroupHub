@@ -7,17 +7,17 @@ export const projectRoles = [
   {
     title: "AI Study Companion",
     roles: ["Frontend", "ML", "Product"],
-    status: "2 roles open",
+    status: "Recruiting",
   },
   {
     title: "Campus Event Map",
     roles: ["Design", "Backend"],
-    status: "Recruiting",
+    status: "New",
   },
   {
     title: "Portfolio Builder",
     roles: ["React", "UX Writing"],
-    status: "New",
+    status: "Recruiting",
   },
 ]
 
