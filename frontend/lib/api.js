@@ -48,6 +48,7 @@ export const api = {
   logout: (csrfToken) =>
     request('/api/auth/logout', { method: 'POST', csrfToken }),
   getMe: () => request('/api/auth/getMe'),
+  getDashboard: (signal) => request('/api/dashboard', { signal }),
   createProject: (payload, csrfToken) =>
     request('/api/projects', { method: 'POST', body: payload, csrfToken }),
   listProjects: (params, signal) =>

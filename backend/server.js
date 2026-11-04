@@ -6,6 +6,7 @@ import connectDB from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
 
 
 const app = express();
@@ -39,6 +40,7 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 
 app.get('/', (req, res) => {
