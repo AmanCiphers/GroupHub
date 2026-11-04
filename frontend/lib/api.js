@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8762'
+const API_URL = process.env.NEXT_API_URL || 'http://localhost:8762'
 
 function toQueryString(params) {
   if (!params) return ''
