@@ -32,6 +32,7 @@ import { getInitials } from "@/lib/utils"
 import { ApplyWizard } from "@/components/apply-wizard"
 import {
   Skeleton,
+  ListSkeleton,
   CardSkeleton,
   TextSkeleton,
   RoleCardSkeleton,
