@@ -16,6 +16,7 @@ const force = process.argv.includes('--force');
 
 const ownerProfile = (owner) => ({
   name: owner.name,
+  username: owner.username,
   headline: owner.headline,
   bio: owner.bio,
   location: owner.location,

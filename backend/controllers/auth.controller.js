@@ -16,6 +16,7 @@ const logAuthEvent = (message) => {
 const toPublicUser = (user) => ({
     id: user._id,
     name: user.name,
+    username: user.username || null,
     email: user.email,
     role: user.role,
     headline: user.headline || '',
@@ -258,7 +259,7 @@ export const login = async (req, res) => {
 export const getMe = async (req, res) => {
     try {
         const user = await User.findById(req.user.userId).select(
-            'name email role headline bio location skills links availability experienceLevel resume createdAt'
+            'name username email role headline bio location skills links availability experienceLevel resume createdAt'
         );
 
         if (!user) {
@@ -285,6 +286,7 @@ export const updateProfile = async (req, res) => {
     try {
         const {
             name,
+            username,
             headline,
             bio,
             location,
@@ -297,6 +299,34 @@ export const updateProfile = async (req, res) => {
         const user = await User.findById(req.user.userId);
         if (!user) {
             return res.status(401).json({ message: 'User no longer exists.' });
+        }
+
+        if (username !== undefined) {
+            if (username === null || username === '') {
+                user.username = undefined;
+            } else {
+                if (typeof username !== 'string') {
+                    return res.status(400).json({ message: 'Username must be a string.' });
+                }
+                const trimmedUsername = username.trim().toLowerCase();
+                if (!/^[a-z0-9_-]+$/.test(trimmedUsername)) {
+                    return res.status(400).json({
+                        message: 'Username can only contain lowercase letters, numbers, underscores, and hyphens.',
+                    });
+                }
+                if (trimmedUsername.length < 3 || trimmedUsername.length > 30) {
+                    return res.status(400).json({
+                        message: 'Username must be between 3 and 30 characters.',
+                    });
+                }
+                const existing = await User.findOne({ username: trimmedUsername });
+                if (existing && existing._id.toString() !== user._id.toString()) {
+                    return res.status(409).json({
+                        message: 'Username is already taken.',
+                    });
+                }
+                user.username = trimmedUsername;
+            }
         }
 
         if (name !== undefined) {

@@ -54,7 +54,7 @@ export const getDashboard = async (req, res) => {
         ? Application.find({ projectId: { $in: ownedProjectIds } })
             .populate({ path: "projectId", select: "title" })
             .populate({ path: "projectRoleId", select: "title" })
-            .populate({ path: "applicantId", select: "name email" })
+            .populate({ path: "applicantId", select: "name email username" })
             .sort({ createdAt: -1 })
             .limit(10)
         : Promise.resolve([]),
@@ -188,6 +188,7 @@ export const getDashboard = async (req, res) => {
           projectTitle: application.projectId.title,
           roleTitle: application.projectRoleId?.title || "Contributor",
           applicantName: application.applicantId?.name || "Unknown applicant",
+          applicantUsername: application.applicantId?.username || null,
           applicantEmail: application.applicantId?.email || "",
           status: application.status,
           appliedAt: application.createdAt,

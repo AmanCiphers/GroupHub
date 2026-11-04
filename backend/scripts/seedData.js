@@ -1,6 +1,7 @@
 export const seedOwners = [
   {
     name: "Maya Chen",
+    username: "mayachen",
     email: "seed.maya@grouphub.local",
     headline: "Product designer building calmer student tools",
     bio: "I design and ship small products that make everyday student life feel lighter. Currently focused on health, wellbeing, and community projects.",
@@ -12,6 +13,7 @@ export const seedOwners = [
   },
   {
     name: "Aarav Patel",
+    username: "aaravpatel",
     email: "seed.aarav@grouphub.local",
     headline: "Full-stack developer focused on climate tech",
     bio: "I build data-heavy web apps and care about making sustainable choices easier to see. Happiest when a messy spreadsheet becomes a clear interface.",
@@ -23,6 +25,7 @@ export const seedOwners = [
   },
   {
     name: "Sofia Reyes",
+    username: "sofiareyes",
     email: "seed.sofia@grouphub.local",
     headline: "Community builder and aspiring product manager",
     bio: "I like turning vague ideas into testable plans. Most of my work sits between users, design, and the first version of a product.",
@@ -34,6 +37,7 @@ export const seedOwners = [
   },
   {
     name: "Noah Williams",
+    username: "noahwilliams",
     email: "seed.noah@grouphub.local",
     headline: "Backend engineer who likes boring reliability",
     bio: "APIs, queues, and clean data models. I enjoy making early-stage products stable enough that the team can stop worrying about infrastructure.",
@@ -45,6 +49,7 @@ export const seedOwners = [
   },
   {
     name: "Priya Nair",
+    username: "priyanair",
     email: "seed.priya@grouphub.local",
     headline: "Brand designer and illustrator",
     bio: "I help small teams look and sound like themselves. Brand systems, illustration, and the occasional very opinionated color palette.",
@@ -56,6 +61,7 @@ export const seedOwners = [
   },
   {
     name: "Liam O'Connor",
+    username: "liamoconnor",
     email: "seed.liam@grouphub.local",
     headline: "Frontend developer and accessibility advocate",
     bio: "I build interfaces that work for keyboard users, screen readers, and people on slow connections. React and CSS are my daily tools.",

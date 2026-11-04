@@ -476,7 +476,12 @@ export default function DashboardPage() {
                           {initials(application.applicantName)}
                         </div>
                         <div>
-                          <h3 className="font-black">{application.applicantName}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-black">{application.applicantName}</h3>
+                            {application.applicantUsername && (
+                              <span className="text-sm font-semibold text-faint">@{application.applicantUsername}</span>
+                            )}
+                          </div>
                           <p className="mt-1 text-sm font-semibold text-faint">
                             {application.applicantEmail || "Applicant"}{" "}
                             · {application.roleTitle} on{" "}

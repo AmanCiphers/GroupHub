@@ -655,7 +655,12 @@ export default function ProjectPage() {
                   {getInitials(owner.name || "Unknown owner")}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-lg font-black">{owner.name || "Unknown owner"}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-lg font-black">{owner.name || "Unknown owner"}</p>
+                    {owner.username && (
+                      <span className="text-sm font-semibold text-faint">@{owner.username}</span>
+                    )}
+                  </div>
                   <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-subtle">
                     {owner.headline || "Project owner"}
                   </p>

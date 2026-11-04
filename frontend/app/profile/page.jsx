@@ -32,6 +32,7 @@ const RESUME_EXTENSIONS = [".pdf", ".doc", ".docx"]
 
 const emptyProfile = {
   name: "",
+  username: "",
   headline: "",
   location: "",
   bio: "",
@@ -50,6 +51,7 @@ const emptyPassword = {
 function profileFromUser(user) {
   return {
     name: user?.name || "",
+    username: user?.username || "",
     headline: user?.headline || "",
     location: user?.location || "",
     bio: user?.bio || "",
@@ -340,6 +342,7 @@ export default function ProfilePage() {
 
   const completedFields = [
     form.name,
+    form.username,
     form.headline,
     form.bio,
     form.location,
@@ -349,7 +352,7 @@ export default function ProfilePage() {
     form.experienceLevel,
     user.resume,
   ].filter(Boolean).length
-  const completeness = Math.round((completedFields / 9) * 100)
+  const completeness = Math.round((completedFields / 10) * 100)
 
   const hasLinks =
     form.links.github || form.links.website || form.links.linkedin
@@ -388,6 +391,26 @@ export default function ProfilePage() {
                       maxLength={80}
                       placeholder="Your name"
                     />
+                  </FormField>
+                  <FormField label="Username">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-faint">@</span>
+                      <input
+                        className="h-11 w-full border border-line bg-white pl-7 pr-3 font-semibold outline-none focus:border-ink"
+                        value={form.username}
+                        onChange={update("username")}
+                        maxLength={30}
+                        placeholder="yourusername"
+                        pattern="[a-z0-9_-]*"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                      />
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-faint">
+                      {form.username.length}/30 · lowercase, numbers, _ or -
+                    </p>
                   </FormField>
                   <FormField label="Location">
                     <input
@@ -725,6 +748,11 @@ export default function ProfilePage() {
                   <p className="truncate text-xl font-black">
                     {form.name || "Your name"}
                   </p>
+                  {form.username && (
+                    <p className="mt-1 text-sm font-semibold text-faint">
+                      @{form.username}
+                    </p>
+                  )}
                   <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-subtle">
                     {form.headline || "Add a headline so teams know your focus."}
                   </p>
