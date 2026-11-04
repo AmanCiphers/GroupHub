@@ -44,6 +44,55 @@ const isDuplicateKeyError = (error) =>
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const parseMulti = (value) => {
+  const raw = Array.isArray(value) ? value : [value];
+  const values = [];
+  for (const entry of raw) {
+    if (typeof entry !== "string") continue;
+    for (const part of entry.split(",")) {
+      const trimmed = part.trim();
+      if (trimmed) values.push(trimmed);
+    }
+  }
+  return [...new Set(values)].slice(0, 20);
+};
+
+const buildProjectFilter = (params, { exclude } = {}) => {
+  const filter = {};
+  if (!params.user) filter.visibility = "public";
+
+  const searchTerm =
+    typeof params.query === "string" ? params.query.trim().slice(0, 100) : "";
+  if (searchTerm) {
+    const regex = new RegExp(escapeRegex(searchTerm), "i");
+    filter.$or = [{ title: regex }, { description: regex }];
+  }
+
+  if (exclude !== "category" && params.categories.length) {
+    filter.category = { $in: params.categories };
+  }
+  if (exclude !== "skill" && params.skills.length) {
+    filter.skills = { $in: params.skills };
+  }
+  if (exclude !== "tag" && params.tags.length) {
+    filter.tags = { $in: params.tags };
+  }
+  if (exclude !== "stage" && params.stages.length) {
+    filter.stage = { $in: params.stages };
+  }
+  if (exclude !== "commitment" && params.commitments.length) {
+    filter.commitment = { $in: params.commitments };
+  }
+  if (exclude !== "status" && params.statuses.length) {
+    filter.status = { $in: params.statuses };
+  }
+
+  return filter;
+};
+
+const toCountMap = (rows) =>
+  Object.fromEntries(rows.map(({ _id, count }) => [_id, count]));
+
 export const createProject = async (req, res) => {
   try {
     const {
@@ -251,46 +300,88 @@ export const listProjects = async (req, res) => {
       skill,
       tag,
       stage,
+      commitment,
       status,
       page = 1,
       limit = 12,
+      facets,
     } = req.query;
 
-    const filter = {};
+    const params = {
+      user: req.user,
+      query,
+      categories: parseMulti(category),
+      skills: parseMulti(skill),
+      tags: parseMulti(tag),
+      stages: parseMulti(stage),
+      commitments: parseMulti(commitment),
+      statuses: parseMulti(status),
+    };
 
-    if (!req.user) {
-      filter.visibility = "public";
-    }
-
-    if (query) {
-      const regex = new RegExp(query, "i");
-      filter.$or = [{ title: regex }, { description: regex }];
-    }
-
-    if (category) filter.category = category;
-    if (skill) filter.skills = { $in: [skill] };
-    if (tag) filter.tags = { $in: [tag] };
-    if (stage) filter.stage = stage;
-    if (status) filter.status = status;
+    const filter = buildProjectFilter(params);
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 12));
+    const wantsFacets = facets === "1" || facets === "true";
 
-    const [projects, total] = await Promise.all([
+    const facetQuery = wantsFacets
+      ? Project.aggregate([
+          {
+            $facet: {
+              categories: [
+                { $match: buildProjectFilter(params, { exclude: "category" }) },
+                { $group: { _id: "$category", count: { $sum: 1 } } },
+              ],
+              skills: [
+                { $match: buildProjectFilter(params, { exclude: "skill" }) },
+                { $unwind: "$skills" },
+                { $group: { _id: "$skills", count: { $sum: 1 } } },
+              ],
+              stages: [
+                { $match: buildProjectFilter(params, { exclude: "stage" }) },
+                { $group: { _id: "$stage", count: { $sum: 1 } } },
+              ],
+              commitments: [
+                {
+                  $match: buildProjectFilter(params, {
+                    exclude: "commitment",
+                  }),
+                },
+                { $group: { _id: "$commitment", count: { $sum: 1 } } },
+              ],
+            },
+          },
+        ])
+      : Promise.resolve([]);
+
+    const [projects, total, facetRows] = await Promise.all([
       Project.find(filter)
         .sort({ createdAt: -1 })
         .skip((pageNum - 1) * limitNum)
         .limit(limitNum)
         .populate("ownerId", "name email"),
       Project.countDocuments(filter),
+      facetQuery,
     ]);
 
-    return res.status(200).json({
+    const body = {
       projects,
       total,
       page: pageNum,
       pages: Math.ceil(total / limitNum),
-    });
+    };
+
+    if (wantsFacets) {
+      const row = facetRows[0] || {};
+      body.facets = {
+        categories: toCountMap(row.categories || []),
+        skills: toCountMap(row.skills || []),
+        stages: toCountMap(row.stages || []),
+        commitments: toCountMap(row.commitments || []),
+      };
+    }
+
+    return res.status(200).json(body);
   } catch (error) {
     logProjectEvent(`List projects error: ${error.message}`);
     return res.status(500).json({ message: "Internal server error." });

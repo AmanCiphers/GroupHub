@@ -3,9 +3,9 @@ import { api } from '@/lib/api'
 
 export const fetchProjects = createAsyncThunk(
   'projects/fetchProjects',
-  async (params, { rejectWithValue }) => {
+  async (params, { rejectWithValue, signal }) => {
     try {
-      return await api.listProjects(params)
+      return await api.listProjects(params, signal)
     } catch (error) {
       return rejectWithValue(error.message)
     }
@@ -23,11 +23,19 @@ export const createProject = createAsyncThunk(
   }
 )
 
+const emptyFacets = {
+  categories: {},
+  skills: {},
+  stages: {},
+  commitments: {},
+}
+
 const initialState = {
   projects: [],
   total: 0,
   page: 1,
   pages: 1,
+  facets: emptyFacets,
   status: 'idle',
   createStatus: 'idle',
   error: null,
@@ -53,8 +61,10 @@ const projectsSlice = createSlice({
         state.total = action.payload.total
         state.page = action.payload.page
         state.pages = action.payload.pages
+        state.facets = action.payload.facets || emptyFacets
       })
       .addCase(fetchProjects.rejected, (state, action) => {
+        if (action.meta.aborted) return
         state.status = 'error'
         state.error = action.payload || 'Failed to load projects.'
       })

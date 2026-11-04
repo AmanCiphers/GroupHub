@@ -34,3 +34,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Miscellaneous
+/brag-output-2026-10-22-1130

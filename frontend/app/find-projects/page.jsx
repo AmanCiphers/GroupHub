@@ -1,27 +1,45 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
+import Link from "next/link"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowUpRight,
   Bookmark,
   Briefcase,
+  ChevronLeft,
+  ChevronRight,
   CircleDot,
   Clock,
   Filter,
   MapPin,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Users,
+  X,
 } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
+import { MultiSelect } from "@/components/multi-select"
 import { fetchProjects } from "@/lib/features/projects/projectsSlice"
-import { PROJECT_CATEGORIES, SKILLS } from "@/lib/data/enums"
+import {
+  COMMITMENT,
+  PROJECT_CATEGORIES,
+  PROJECT_STAGES,
+  SKILLS,
+} from "@/lib/data/enums"
 
-const categories = ["All", ...PROJECT_CATEGORIES]
-const skillFilters = SKILLS
+function parseFilters(params) {
+  return {
+    q: (params.get("q") || "").trim(),
+    categories: params.getAll("category"),
+    skills: params.getAll("skill"),
+    stages: params.getAll("stage"),
+    commitments: params.getAll("commitment"),
+    page: Math.max(1, parseInt(params.get("page") || "1", 10) || 1),
+  }
+}
 
 function timeAgo(date) {
   if (!date) return "recently"
@@ -46,18 +64,117 @@ function initials(name) {
     .toUpperCase()
 }
 
-/** Project discovery with category/skill filters and search. */
+/** Project discovery with URL-synced, server-side filters. */
 export default function FindProjectsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
+      <FindProjectsContent />
+    </Suspense>
+  )
+}
+
+function FindProjectsContent() {
   const dispatch = useDispatch()
-  const { projects, status } = useSelector((state) => state.projects)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedSkill, setSelectedSkill] = useState("All")
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const paramsKey = searchParams.toString()
+  const filters = parseFilters(searchParams)
+
+  const { projects, status, error, total, pages, facets } = useSelector(
+    (state) => state.projects
+  )
+
+  const [searchInput, setSearchInput] = useState(filters.q)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [savedProjects, setSavedProjects] = useState([])
 
+  const updateParams = useCallback(
+    (mutate) => {
+      const next = new URLSearchParams(paramsKey)
+      mutate(next)
+      const queryString = next.toString()
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, {
+        scroll: false,
+      })
+    },
+    [paramsKey, pathname, router]
+  )
+
+  const toggleValue = useCallback(
+    (key, value) => {
+      updateParams((next) => {
+        const values = next.getAll(key)
+        next.delete(key)
+        const updated = values.includes(value)
+          ? values.filter((item) => item !== value)
+          : [...values, value]
+        updated.forEach((item) => next.append(key, item))
+        next.delete("page")
+      })
+    },
+    [updateParams]
+  )
+
+  const clearValues = useCallback(
+    (key) => {
+      updateParams((next) => {
+        next.delete(key)
+        next.delete("page")
+      })
+    },
+    [updateParams]
+  )
+
+  const goToPage = useCallback(
+    (target) => {
+      updateParams((next) => {
+        if (target <= 1) next.delete("page")
+        else next.set("page", String(target))
+      })
+    },
+    [updateParams]
+  )
+
+  const clearAll = useCallback(() => {
+    setSearchInput("")
+    router.replace(pathname, { scroll: false })
+  }, [pathname, router])
+
   useEffect(() => {
-    dispatch(fetchProjects({}))
-  }, [dispatch])
+    const current = parseFilters(new URLSearchParams(paramsKey))
+    const params = { page: current.page, facets: 1 }
+
+    if (current.q) params.query = current.q
+    if (current.categories.length) params.category = current.categories.join(",")
+    if (current.skills.length) params.skill = current.skills.join(",")
+    if (current.stages.length) params.stage = current.stages.join(",")
+    if (current.commitments.length) {
+      params.commitment = current.commitments.join(",")
+    }
+
+    const request = dispatch(fetchProjects(params))
+    return () => request.abort()
+  }, [dispatch, paramsKey])
+
+  useEffect(() => {
+    setSearchInput(filters.q)
+  }, [filters.q])
+
+  useEffect(() => {
+    const trimmed = searchInput.trim()
+    if (trimmed === filters.q) return
+
+    const timer = setTimeout(() => {
+      updateParams((next) => {
+        if (trimmed) next.set("q", trimmed)
+        else next.delete("q")
+        next.delete("page")
+      })
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchInput, filters.q, updateParams])
 
   const toggleSave = (projectId) => {
     setSavedProjects((prev) =>
@@ -67,28 +184,47 @@ export default function FindProjectsPage() {
     )
   }
 
-  const filteredProjects = projects.filter((project) => {
-    const query = searchQuery.toLowerCase()
-    const searchable = [
-      project.title,
-      project.description,
-      project.category,
-      ...(project.skills || []),
-      ...(project.tags || []),
-    ]
-      .join(" ")
-      .toLowerCase()
+  const chips = [
+    ...(filters.q
+      ? [
+          {
+            key: "q",
+            label: `“${filters.q}”`,
+            onRemove: () => {
+              setSearchInput("")
+              updateParams((next) => {
+                next.delete("q")
+                next.delete("page")
+              })
+            },
+          },
+        ]
+      : []),
+    ...filters.categories.map((value) => ({
+      key: `category:${value}`,
+      label: value,
+      onRemove: () => toggleValue("category", value),
+    })),
+    ...filters.skills.map((value) => ({
+      key: `skill:${value}`,
+      label: value,
+      onRemove: () => toggleValue("skill", value),
+    })),
+    ...filters.stages.map((value) => ({
+      key: `stage:${value}`,
+      label: value,
+      onRemove: () => toggleValue("stage", value),
+    })),
+    ...filters.commitments.map((value) => ({
+      key: `commitment:${value}`,
+      label: value,
+      onRemove: () => toggleValue("commitment", value),
+    })),
+  ]
 
-    const matchesSearch = searchable.includes(query)
-    const matchesCategory =
-      selectedCategory === "All" || project.category === selectedCategory
-    const matchesSkill =
-      selectedSkill === "All" || (project.skills || []).includes(selectedSkill)
-
-    return matchesSearch && matchesCategory && matchesSkill
-  })
-
-  const isLoading = status === "loading" && projects.length === 0
+  const activeCount = chips.length
+  const isLoading = status === "loading"
+  const isRefreshing = isLoading && projects.length > 0
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
@@ -105,16 +241,41 @@ export default function FindProjectsPage() {
               type="text"
               placeholder="Search by project, role, skill, or keyword"
               className="h-14 w-full border border-line-strong bg-white pl-12 pr-4 text-base font-semibold text-ink outline-none transition placeholder:text-faint focus:border-ink"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
             />
           </div>
         </div>
       </PageHeader>
 
       <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+        <div className="mb-4 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((prev) => !prev)}
+            className="flex h-11 w-full items-center justify-between border border-line-strong bg-white px-4 text-sm font-black text-ink"
+          >
+            <span className="flex items-center gap-2">
+              <Filter className="size-4" />
+              Filters
+              {activeCount > 0 && (
+                <span className="flex size-5 items-center justify-center rounded-full bg-ink text-xs text-white">
+                  {activeCount}
+                </span>
+              )}
+            </span>
+            <span className="text-xs uppercase tracking-[0.14em] text-quiet">
+              {mobileFiltersOpen ? "Hide" : "Show"}
+            </span>
+          </button>
+        </div>
+
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside
+            className={`${
+              mobileFiltersOpen ? "block" : "hidden"
+            } lg:sticky lg:top-24 lg:block lg:self-start`}
+          >
             <div className="border border-line bg-surface">
               <div className="flex items-center justify-between border-b border-line px-5 py-4">
                 <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.14em]">
@@ -122,104 +283,129 @@ export default function FindProjectsPage() {
                   Filters
                 </h2>
                 <button
-                  className="text-xs font-black text-quiet underline underline-offset-4 hover:text-ink"
-                  onClick={() => {
-                    setSelectedCategory("All")
-                    setSelectedSkill("All")
-                    setSearchQuery("")
-                  }}
+                  className="text-xs font-black text-quiet underline underline-offset-4 hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={clearAll}
+                  disabled={activeCount === 0}
                 >
                   Reset
                 </button>
               </div>
 
-              <div className="space-y-7 p-5">
-                <div>
-                  <h3 className="mb-3 text-sm font-black text-ink">
-                    Category
-                  </h3>
-                  <div className="grid gap-1">
-                    {categories.map((name) => (
-                      <button
-                        key={name}
-                        onClick={() => setSelectedCategory(name)}
-                        className={`flex items-center justify-between px-3 py-2 text-left text-sm font-bold transition ${
-                          selectedCategory === name
-                            ? "bg-charcoal text-white"
-                            : "text-subtle hover:bg-wash hover:text-ink"
-                        }`}
-                      >
-                        <span>{name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+              <div className="space-y-5 p-5">
+                <MultiSelect
+                  label="Category"
+                  options={PROJECT_CATEGORIES}
+                  selected={filters.categories}
+                  counts={facets.categories}
+                  onToggle={(value) => toggleValue("category", value)}
+                  onClear={() => clearValues("category")}
+                  searchPlaceholder="Search categories…"
+                />
 
-                <div>
-                  <h3 className="mb-3 text-sm font-black text-ink">
-                    Skills
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setSelectedSkill("All")}
-                      className={`border px-3 py-1 text-xs font-black transition ${
-                        selectedSkill === "All"
-                          ? "border-ink bg-ink text-white"
-                          : "border-line bg-white text-subtle hover:border-ink"
-                      }`}
-                    >
-                      All
-                    </button>
-                    {skillFilters.map((skill) => (
-                      <button
-                        key={skill}
-                        onClick={() => setSelectedSkill(skill)}
-                        className={`border px-3 py-1 text-xs font-black transition ${
-                          selectedSkill === skill
-                            ? "border-ink bg-ink text-white"
-                            : "border-line bg-white text-subtle hover:border-ink"
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <MultiSelect
+                  label="Skills"
+                  options={SKILLS}
+                  selected={filters.skills}
+                  counts={facets.skills}
+                  onToggle={(value) => toggleValue("skill", value)}
+                  onClear={() => clearValues("skill")}
+                  searchPlaceholder="Search skills…"
+                />
 
-                <div className="border-t border-line pt-5">
-                  <p className="flex items-center gap-2 text-sm font-bold text-subtle">
-                    <SlidersHorizontal className="size-4" />
-                    More filters coming with profiles.
-                  </p>
-                </div>
+                <MultiSelect
+                  label="Stage"
+                  options={PROJECT_STAGES}
+                  selected={filters.stages}
+                  counts={facets.stages}
+                  onToggle={(value) => toggleValue("stage", value)}
+                  onClear={() => clearValues("stage")}
+                  searchPlaceholder="Search stages…"
+                />
+
+                <MultiSelect
+                  label="Commitment"
+                  options={COMMITMENT}
+                  selected={filters.commitments}
+                  counts={facets.commitments}
+                  onToggle={(value) => toggleValue("commitment", value)}
+                  onClear={() => clearValues("commitment")}
+                  searchPlaceholder="Search commitment…"
+                />
+              </div>
+
+              <div className="border-t border-line p-4 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(false)}
+                  className="inline-flex h-11 w-full items-center justify-center border border-ink bg-ink px-4 text-sm font-black text-white"
+                >
+                  Show results
+                </button>
               </div>
             </div>
           </aside>
 
           <div>
+            {chips.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {chips.map((chip) => (
+                  <button
+                    key={chip.key}
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="inline-flex items-center gap-1.5 border border-ink bg-white px-2.5 py-1 text-xs font-black text-ink transition hover:bg-ink hover:text-white"
+                  >
+                    {chip.label}
+                    <X className="size-3" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="text-xs font-black text-quiet underline underline-offset-4 hover:text-ink"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
+
             <div className="mb-5 flex flex-col gap-3 border-b border-line pb-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.14em] text-quiet">
-                  {filteredProjects.length} open projects
+                  {total} open project{total === 1 ? "" : "s"}
+                  {isRefreshing && (
+                    <span className="ml-2 normal-case tracking-normal text-faint">
+                      updating…
+                    </span>
+                  )}
                 </p>
                 <p className="mt-1 text-sm font-semibold text-subtle">
                   Sorted by most recent.
                 </p>
               </div>
-              <button className="inline-flex h-10 w-fit items-center gap-2 border border-ink bg-ink px-4 text-sm font-black text-white transition hover:bg-transparent hover:text-ink">
+              <Link
+                href="/projects/new"
+                className="inline-flex h-10 w-fit items-center gap-2 border border-ink bg-ink px-4 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
+              >
                 Post a project
                 <ArrowUpRight className="size-4" />
-              </button>
+              </Link>
             </div>
 
-            {isLoading && (
+            {isLoading && projects.length === 0 && (
               <div className="border border-line bg-surface p-10 text-center">
                 <p className="text-xl font-black text-ink">Loading projects…</p>
               </div>
             )}
 
+            {status === "error" && (
+              <div className="mb-4 border border-red-300 bg-red-50 p-4 text-sm font-bold text-red-700">
+                {error || "Something went wrong while loading projects."}
+              </div>
+            )}
+
             <div className="grid gap-4">
-              {filteredProjects.map((project) => {
+              {projects.map((project) => {
                 const isSaved = savedProjects.includes(project._id)
                 const ownerName = project.ownerId?.name || "Unknown"
                 const spotsOpen = project.spotsOpen ?? project.maxTeamSize ?? 0
@@ -372,7 +558,7 @@ export default function FindProjectsPage() {
               })}
             </div>
 
-            {!isLoading && filteredProjects.length === 0 && (
+            {!isLoading && status !== "error" && projects.length === 0 && (
               <div className="border border-line bg-surface p-10 text-center">
                 <p className="text-xl font-black text-ink">
                   No projects found.
@@ -380,6 +566,38 @@ export default function FindProjectsPage() {
                 <p className="mt-2 font-semibold text-subtle">
                   Try a broader search or reset the filters.
                 </p>
+                {activeCount > 0 && (
+                  <button
+                    onClick={clearAll}
+                    className="mt-4 inline-flex h-10 items-center justify-center border border-ink bg-ink px-4 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
+                  >
+                    Reset filters
+                  </button>
+                )}
+              </div>
+            )}
+
+            {pages > 1 && (
+              <div className="mt-8 flex items-center justify-between border-t border-line pt-6">
+                <button
+                  onClick={() => goToPage(filters.page - 1)}
+                  disabled={filters.page <= 1 || isLoading}
+                  className="inline-flex h-10 items-center gap-2 border border-ink px-4 text-sm font-black text-ink transition hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:border-line disabled:text-faint disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="size-4" />
+                  Previous
+                </button>
+                <p className="text-sm font-black uppercase tracking-[0.14em] text-quiet">
+                  Page {filters.page} of {pages}
+                </p>
+                <button
+                  onClick={() => goToPage(filters.page + 1)}
+                  disabled={filters.page >= pages || isLoading}
+                  className="inline-flex h-10 items-center gap-2 border border-ink px-4 text-sm font-black text-ink transition hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:border-line disabled:text-faint disabled:hover:bg-transparent"
+                >
+                  Next
+                  <ChevronRight className="size-4" />
+                </button>
               </div>
             )}
           </div>

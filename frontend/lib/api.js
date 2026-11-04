@@ -12,7 +12,7 @@ function toQueryString(params) {
   return qs ? `?${qs}` : ''
 }
 
-async function request(path, { method = 'GET', body, csrfToken } = {}) {
+async function request(path, { method = 'GET', body, csrfToken, signal } = {}) {
   const headers = {}
 
   if (body !== undefined) {
@@ -28,6 +28,7 @@ async function request(path, { method = 'GET', body, csrfToken } = {}) {
     headers,
     credentials: 'include',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal,
   })
 
   const data = await res.json().catch(() => ({}))
@@ -49,7 +50,8 @@ export const api = {
   getMe: () => request('/api/auth/getMe'),
   createProject: (payload, csrfToken) =>
     request('/api/projects', { method: 'POST', body: payload, csrfToken }),
-  listProjects: (params) => request(`/api/projects${toQueryString(params)}`),
+  listProjects: (params, signal) =>
+    request(`/api/projects${toQueryString(params)}`, { signal }),
   getProject: (id) => request(`/api/projects/${id}`),
   rewriteDescription: (payload, csrfToken) =>
     request('/api/ai/rewrite-description', { method: 'POST', body: payload, csrfToken }),
