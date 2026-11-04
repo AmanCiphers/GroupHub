@@ -49,6 +49,9 @@ const emptyForm = {
   startDate: "",
   skills: [],
   tags: [],
+  roles: [
+    { title: "", skills: [], slots: 1, status: "Open" },
+  ],
 }
 
 function validate(form) {
@@ -77,6 +80,16 @@ function validate(form) {
   const size = Number(form.maxTeamSize)
   if (!/^\d+$/.test(String(form.maxTeamSize).trim()) || size < 1)
     errors.maxTeamSize = "Must be a whole number of at least 1."
+
+  if (!Array.isArray(form.roles) || form.roles.length === 0) {
+    errors.roles = "At least one role is required."
+  } else {
+    form.roles.forEach((role, idx) => {
+      if (!role.title?.trim()) {
+        errors.roles = `Role ${idx + 1} needs a title.`
+      }
+    })
+  }
 
   return errors
 }
@@ -248,6 +261,12 @@ export default function NewProjectPage() {
           startDate: form.startDate ? new Date(form.startDate).toISOString() : undefined,
           skills: form.skills,
           tags: form.tags,
+          roles: form.roles.map((r) => ({
+            title: r.title.trim(),
+            skills: r.skills,
+            slots: Number(r.slots) || 1,
+            status: r.status,
+          })),
         })
       ).unwrap()
       router.push("/dashboard")
@@ -582,6 +601,148 @@ export default function NewProjectPage() {
 
           <FormSection
             number={5}
+            title="Open roles"
+            description="Define the roles you are hiring for. At least one role is required."
+          >
+            <div className="space-y-4">
+              {form.roles.map((role, idx) => (
+                <div
+                  key={idx}
+                  className="border border-line bg-white p-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-black uppercase tracking-[0.14em] text-faint">
+                      Role {idx + 1}
+                    </h4>
+                    {form.roles.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            roles: prev.roles.filter((_, i) => i !== idx),
+                          }))
+                          if (errors.roles)
+                            setErrors((prev) => ({ ...prev, roles: undefined }))
+                        }}
+                        className="text-xs font-semibold text-red-600 hover:text-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
+                        Role title <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        maxLength={80}
+                        className={`mt-1.5 h-11 w-full border bg-white px-3 font-semibold outline-none focus:border-ink ${
+                          errors.roles ? "border-red-600" : "border-line"
+                        }`}
+                        placeholder="e.g. Frontend Developer"
+                        value={role.title}
+                        onChange={(e) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            roles: prev.roles.map((r, i) =>
+                              i === idx ? { ...r, title: e.target.value } : r
+                            ),
+                          }))
+                          if (errors.roles)
+                            setErrors((prev) => ({ ...prev, roles: undefined }))
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
+                        Skills for this role
+                      </label>
+                      <ChipPicker
+                        suggestions={SKILLS}
+                        placeholder="Add a skill…"
+                        value={role.skills}
+                        onChange={(skills) => {
+                          setForm((prev) => ({
+                            ...prev,
+                            roles: prev.roles.map((r, i) =>
+                              i === idx ? { ...r, skills } : r
+                            ),
+                          }))
+                        }}
+                      />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
+                          Slots
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          className="mt-1.5 h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                          value={role.slots}
+                          onChange={(e) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              roles: prev.roles.map((r, i) =>
+                                i === idx ? { ...r, slots: Number(e.target.value) || 1 } : r
+                              ),
+                            }))
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
+                          Status
+                        </label>
+                        <select
+                          className="mt-1.5 h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                          value={role.status}
+                          onChange={(e) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              roles: prev.roles.map((r, i) =>
+                                i === idx ? { ...r, status: e.target.value } : r
+                              ),
+                            }))
+                          }}
+                        >
+                          <option value="Open">Open</option>
+                          <option value="Filled">Filled</option>
+                          <option value="Closed">Closed</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {form.roles.length < 5 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm((prev) => ({
+                      ...prev,
+                      roles: [...prev.roles, { title: "", skills: [], slots: 1, status: "Open" }],
+                    }))
+                  }}
+                  className="inline-flex items-center gap-2 border-2 border-dashed border-line bg-white px-4 py-2 text-sm font-black text-subtle transition hover:border-ink hover:text-ink"
+                >
+                  <span className="size-5 flex items-center justify-center border border-ink text-ink font-black">
+                    +
+                  </span>
+                  Add another role
+                </button>
+              )}
+              {errors.roles && (
+                <p className="text-xs font-semibold text-red-600">{errors.roles}</p>
+              )}
+            </div>
+          </FormSection>
+
+          <FormSection
+            number={6}
             title="Skills & tags"
             description="Click suggestions to add them, or type your own and press Enter."
           >

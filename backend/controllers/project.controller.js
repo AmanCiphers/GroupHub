@@ -12,6 +12,7 @@ import {
   COMMITMENT,
   COMPENSATION,
   EXPERIENCE_LEVEL,
+  ROLE_STATUS,
 } from "../utils/enums.js";
 import { copyProfileResumeToApplication, applicationResumeDirectory } from "../middleware/upload.middleware.js";
 import fs from "node:fs/promises";
@@ -123,6 +124,7 @@ export const createProject = async (req, res) => {
       startDate,
       milestones,
       maxTeamSize,
+      roles,
     } = req.body || {};
 
     if (
@@ -140,6 +142,35 @@ export const createProject = async (req, res) => {
       return res.status(400).json({
         message: "title, description, and targetAudience cannot be empty.",
       });
+    }
+
+    if (!Array.isArray(roles) || roles.length === 0) {
+      return res.status(400).json({
+        message: "At least one role is required.",
+      });
+    }
+
+    for (const [idx, role] of roles.entries()) {
+      if (!isString(role?.title) || role.title.trim() === "") {
+        return res.status(400).json({
+          message: `Role ${idx + 1}: title is required.`,
+        });
+      }
+      if (role.slots !== undefined && (!isNumber(role.slots) || role.slots < 1)) {
+        return res.status(400).json({
+          message: `Role ${idx + 1}: slots must be a number >= 1.`,
+        });
+      }
+      if (role.status !== undefined && !ROLE_STATUS.includes(role.status)) {
+        return res.status(400).json({
+          message: `Role ${idx + 1}: status must be one of: ${ROLE_STATUS.join(", ")}.`,
+        });
+      }
+      if (role.skills !== undefined && !isStringArray(role.skills)) {
+        return res.status(400).json({
+          message: `Role ${idx + 1}: skills must be an array of strings.`,
+        });
+      }
     }
 
     if (compensation !== undefined && !COMPENSATION.includes(compensation)) {
@@ -276,16 +307,29 @@ export const createProject = async (req, res) => {
       applicantCount: 0,
     });
 
+    const createdRoles = await Promise.all(
+      roles.map((role) =>
+        ProjectRole.create({
+          projectId: project._id,
+          title: role.title.trim(),
+          skills: normalizeList(role.skills, { maxItems: 20, maxLen: 50 }),
+          slots: isNumber(role.slots) ? role.slots : 1,
+          status: ROLE_STATUS.includes(role.status) ? role.status : "Open",
+        })
+      )
+    );
+
     await Membership.create({
       projectId: project._id,
       userId: req.user.userId,
+      roleId: createdRoles[0]._id,
       memberRole: "Owner",
       status: "Active",
     });
 
-    logProjectEvent(`Project created: ${project.title} by ${req.user.userId}`);
+    logProjectEvent(`Project created: ${project.title} by ${req.user.userId} with ${createdRoles.length} role(s)`);
 
-    return res.status(201).json({ project });
+    return res.status(201).json({ project, roles: createdRoles });
   } catch (error) {
     if (isDuplicateKeyError(error)) {
       logProjectEvent("Create project failed: duplicate title for owner.");
@@ -294,6 +338,53 @@ export const createProject = async (req, res) => {
       });
     }
     logProjectEvent(`Create project error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const addProjectRole = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { title, skills, slots, status } = req.body || {};
+
+    if (!isString(title) || title.trim() === "") {
+      return res.status(400).json({ message: "Role title is required." });
+    }
+    if (slots !== undefined && (!isNumber(slots) || slots < 1)) {
+      return res.status(400).json({ message: "slots must be a number >= 1." });
+    }
+    if (status !== undefined && !ROLE_STATUS.includes(status)) {
+      return res.status(400).json({ message: `status must be one of: ${ROLE_STATUS.join(", ")}.` });
+    }
+    if (skills !== undefined && !isStringArray(skills)) {
+      return res.status(400).json({ message: "skills must be an array of strings." });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can add roles." });
+    }
+
+    const role = await ProjectRole.create({
+      projectId: project._id,
+      title: title.trim(),
+      skills: normalizeList(skills, { maxItems: 20, maxLen: 50 }),
+      slots: isNumber(slots) ? slots : 1,
+      status: ROLE_STATUS.includes(status) ? status : "Open",
+    });
+
+    logProjectEvent(`Role added to ${project.title}: ${role.title} by ${req.user.userId}`);
+
+    return res.status(201).json({ role });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project not found." });
+    }
+    logProjectEvent(`Add role error: ${error.message}`);
     return res.status(500).json({ message: "Internal server error." });
   }
 };

@@ -5,6 +5,7 @@ import {
   getProjectById,
   applyToRole,
   downloadApplicationResume,
+  addProjectRole,
 } from "../controllers/project.controller.js";
 import {
   authenticateToken,
@@ -24,6 +25,12 @@ router.post(
   verifyCsrfToken,
   uploadApplicationResume,
   applyToRole,
+);
+router.post(
+  "/:projectId/roles",
+  authenticateToken,
+  verifyCsrfToken,
+  addProjectRole,
 );
 router.get(
   "/:projectId/applications/:applicationId/resume",
