@@ -6,6 +6,12 @@ import {
   applyToRole,
   downloadApplicationResume,
   addProjectRole,
+  updateProject,
+  updateProjectRole,
+  deleteProjectRole,
+  addProjectMember,
+  updateProjectMember,
+  removeProjectMember,
   getLandingProjects,
   getContributeData,
 } from "../controllers/project.controller.js";
@@ -23,6 +29,7 @@ router.get("/contribute", getContributeData);
 router.get("/", listProjects);
 router.get("/:projectId", optionalAuth, getProjectById);
 router.post("/", authenticateToken, verifyCsrfToken, createProject);
+router.patch("/:projectId", authenticateToken, verifyCsrfToken, updateProject);
 router.post(
   "/:projectId/roles/:roleId/applications",
   authenticateToken,
@@ -35,6 +42,36 @@ router.post(
   authenticateToken,
   verifyCsrfToken,
   addProjectRole,
+);
+router.patch(
+  "/:projectId/roles/:roleId",
+  authenticateToken,
+  verifyCsrfToken,
+  updateProjectRole,
+);
+router.delete(
+  "/:projectId/roles/:roleId",
+  authenticateToken,
+  verifyCsrfToken,
+  deleteProjectRole,
+);
+router.post(
+  "/:projectId/members",
+  authenticateToken,
+  verifyCsrfToken,
+  addProjectMember,
+);
+router.patch(
+  "/:projectId/members/:membershipId",
+  authenticateToken,
+  verifyCsrfToken,
+  updateProjectMember,
+);
+router.delete(
+  "/:projectId/members/:membershipId",
+  authenticateToken,
+  verifyCsrfToken,
+  removeProjectMember,
 );
 router.get(
   "/:projectId/applications/:applicationId/resume",

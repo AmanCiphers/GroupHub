@@ -13,6 +13,8 @@ import {
   COMPENSATION,
   EXPERIENCE_LEVEL,
   ROLE_STATUS,
+  MEMBER_ROLE,
+  MEMBERSHIP_STATUS,
 } from "../utils/enums.js";
 import { copyProfileResumeToApplication, applicationResumeDirectory } from "../middleware/upload.middleware.js";
 import fs from "node:fs/promises";
@@ -399,6 +401,498 @@ export const addProjectRole = async (req, res) => {
   }
 };
 
+const syncProjectTeamCounts = async (projectId) => {
+  const [memberCount, project] = await Promise.all([
+    Membership.countDocuments({ projectId, status: "Active" }),
+    Project.findById(projectId).select("maxTeamSize"),
+  ]);
+
+  if (!project) return;
+
+  const spotsOpen = Math.max(0, (project.maxTeamSize ?? 1) - memberCount);
+  await Project.updateOne({ _id: projectId }, { memberCount, spotsOpen });
+};
+
+const parseOptionalDate = (value) => {
+  if (value === null || value === "") return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
+export const updateProject = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.projectId);
+
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can edit this project." });
+    }
+
+    const body = req.body || {};
+    const next = {};
+
+    const stringFields = {
+      title: 120,
+      description: 2000,
+      whyBuilding: 2000,
+      targetAudience: 500,
+      currentStatus: 1000,
+      contactInfo: 500,
+      location: 80,
+    };
+
+    for (const [field, maxLength] of Object.entries(stringFields)) {
+      if (body[field] === undefined) continue;
+      if (typeof body[field] !== "string") {
+        return res.status(400).json({ message: `${field} must be a string.` });
+      }
+      const value = body[field].trim();
+      if (["title", "description", "targetAudience"].includes(field) && !value) {
+        return res.status(400).json({ message: `${field} cannot be empty.` });
+      }
+      if (value.length > maxLength) {
+        return res.status(400).json({ message: `${field} cannot exceed ${maxLength} characters.` });
+      }
+      next[field] = value;
+    }
+
+    const enumFields = {
+      category: PROJECT_CATEGORIES,
+      stage: PROJECT_STAGES,
+      status: PROJECT_STATUS,
+      visibility: PROJECT_VISIBILITY,
+      joinPolicy: PROJECT_JOIN_POLICY,
+      commitment: COMMITMENT,
+      compensation: COMPENSATION,
+      experienceLevel: EXPERIENCE_LEVEL,
+    };
+
+    for (const [field, allowed] of Object.entries(enumFields)) {
+      if (body[field] === undefined) continue;
+      if (!allowed.includes(body[field])) {
+        return res.status(400).json({
+          message: `${field} must be one of: ${allowed.join(", ")}.`,
+        });
+      }
+      next[field] = body[field];
+    }
+
+    if (body.skills !== undefined) {
+      if (!isStringArray(body.skills)) {
+        return res.status(400).json({ message: "skills must be an array of strings." });
+      }
+      next.skills = normalizeList(body.skills);
+    }
+
+    if (body.tags !== undefined) {
+      if (!isStringArray(body.tags)) {
+        return res.status(400).json({ message: "tags must be an array of strings." });
+      }
+      next.tags = normalizeList(body.tags, { lowercase: true });
+    }
+
+    if (body.maxTeamSize !== undefined) {
+      if (!isNumber(body.maxTeamSize) || body.maxTeamSize < 1) {
+        return res.status(400).json({ message: "maxTeamSize must be a number >= 1." });
+      }
+      next.maxTeamSize = Math.round(body.maxTeamSize);
+    }
+
+    for (const field of ["startDate", "targetEndDate"]) {
+      if (body[field] === undefined) continue;
+      const parsed = parseOptionalDate(body[field]);
+      if (parsed === undefined) {
+        return res.status(400).json({ message: `${field} must be a valid date.` });
+      }
+      next[field] = parsed;
+    }
+
+    if (next.title) {
+      const existing = await Project.findOne({
+        ownerId: req.user.userId,
+        title: new RegExp(`^${escapeRegex(next.title)}$`, "i"),
+        _id: { $ne: project._id },
+      });
+      if (existing) {
+        return res.status(409).json({
+          message: "You already have a project with this title.",
+        });
+      }
+    }
+
+    Object.assign(project, next);
+
+    const memberCount = await Membership.countDocuments({
+      projectId: project._id,
+      status: "Active",
+    });
+    project.memberCount = memberCount;
+    project.spotsOpen = Math.max(0, (project.maxTeamSize ?? 1) - memberCount);
+
+    await project.save();
+
+    logProjectEvent(`Project updated: ${project.title} by ${req.user.userId}`);
+
+    return res.status(200).json({ message: "Project updated.", project });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project not found." });
+    }
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({
+        message: "You already have a project with this title.",
+      });
+    }
+    logProjectEvent(`Update project error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const updateProjectRole = async (req, res) => {
+  try {
+    const { projectId, roleId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can edit roles." });
+    }
+
+    const role = await ProjectRole.findOne({ _id: roleId, projectId });
+    if (!role) {
+      return res.status(404).json({ message: "Role not found." });
+    }
+
+    const body = req.body || {};
+
+    if (body.title !== undefined) {
+      if (!isString(body.title) || !body.title.trim()) {
+        return res.status(400).json({ message: "Role title is required." });
+      }
+      if (body.title.trim().length > 80) {
+        return res.status(400).json({ message: "Role title cannot exceed 80 characters." });
+      }
+      role.title = body.title.trim();
+    }
+
+    if (body.description !== undefined) {
+      if (typeof body.description !== "string") {
+        return res.status(400).json({ message: "description must be a string." });
+      }
+      role.description = body.description.trim().slice(0, 1000);
+    }
+
+    if (body.skills !== undefined) {
+      if (!isStringArray(body.skills)) {
+        return res.status(400).json({ message: "skills must be an array of strings." });
+      }
+      role.skills = normalizeList(body.skills, { maxItems: 20, maxLen: 50 });
+    }
+
+    if (body.slots !== undefined) {
+      if (!isNumber(body.slots) || body.slots < 1) {
+        return res.status(400).json({ message: "slots must be a number >= 1." });
+      }
+      const accepted = await Application.countDocuments({
+        projectRoleId: role._id,
+        status: "Accepted",
+      });
+      if (body.slots < accepted) {
+        return res.status(400).json({
+          message: `slots cannot be less than the ${accepted} accepted contributor(s).`,
+        });
+      }
+      role.slots = Math.round(body.slots);
+    }
+
+    if (body.status !== undefined) {
+      if (!ROLE_STATUS.includes(body.status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${ROLE_STATUS.join(", ")}.`,
+        });
+      }
+      role.status = body.status;
+    }
+
+    await role.save();
+
+    logProjectEvent(`Role updated: ${role.title} on ${project.title}`);
+
+    return res.status(200).json({ message: "Role updated.", role });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or role not found." });
+    }
+    logProjectEvent(`Update role error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const deleteProjectRole = async (req, res) => {
+  try {
+    const { projectId, roleId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can remove roles." });
+    }
+
+    const role = await ProjectRole.findOne({ _id: roleId, projectId });
+    if (!role) {
+      return res.status(404).json({ message: "Role not found." });
+    }
+
+    const [accepted, assignedMembers] = await Promise.all([
+      Application.countDocuments({ projectRoleId: role._id, status: "Accepted" }),
+      Membership.countDocuments({
+        projectId: project._id,
+        roleId: role._id,
+        status: "Active",
+      }),
+    ]);
+
+    if (accepted > 0 || assignedMembers > 0) {
+      return res.status(409).json({
+        message:
+          "This role has accepted contributors. Reassign or remove them before deleting the role.",
+      });
+    }
+
+    await Promise.all([
+      Application.deleteMany({ projectRoleId: role._id }),
+      role.deleteOne(),
+    ]);
+
+    logProjectEvent(`Role removed: ${role.title} from ${project.title}`);
+
+    return res.status(200).json({ message: "Role removed." });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or role not found." });
+    }
+    logProjectEvent(`Delete role error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const addProjectMember = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { email, memberRole = "Member", roleId } = req.body || {};
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can add members." });
+    }
+
+    if (typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ message: "Member email is required." });
+    }
+
+    if (!["Admin", "Mentor", "Member"].includes(memberRole)) {
+      return res.status(400).json({
+        message: "memberRole must be one of: Admin, Mentor, Member.",
+      });
+    }
+
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ message: "No registered user found with that email." });
+    }
+
+    if (user._id.toString() === project.ownerId.toString()) {
+      return res.status(400).json({ message: "The project owner is already on the team." });
+    }
+
+    let role;
+    if (roleId) {
+      role = await ProjectRole.findOne({ _id: roleId, projectId: project._id });
+      if (!role) {
+        return res.status(404).json({ message: "Role not found on this project." });
+      }
+    }
+
+    const existing = await Membership.findOne({
+      projectId: project._id,
+      userId: user._id,
+    });
+
+    if (existing?.status === "Active") {
+      return res.status(409).json({ message: "This user is already a team member." });
+    }
+
+    const activeCount = await Membership.countDocuments({
+      projectId: project._id,
+      status: "Active",
+    });
+
+    if (activeCount >= project.maxTeamSize) {
+      return res.status(400).json({ message: "The team is already at its maximum size." });
+    }
+
+    let membership;
+    if (existing) {
+      existing.memberRole = memberRole;
+      existing.roleId = role?._id;
+      existing.status = "Active";
+      membership = await existing.save();
+    } else {
+      membership = await Membership.create({
+        projectId: project._id,
+        userId: user._id,
+        roleId: role?._id,
+        memberRole,
+        status: "Active",
+      });
+    }
+
+    await syncProjectTeamCounts(project._id);
+
+    logProjectEvent(`${user.email} added to ${project.title} as ${memberRole}`);
+
+    return res.status(201).json({
+      message: "Member added.",
+      member: {
+        id: membership._id,
+        memberRole: membership.memberRole,
+        roleTitle: role?.title || null,
+        joinedAt: membership.createdAt,
+        user: {
+          id: user._id,
+          name: user.name,
+          headline: user.headline || "",
+          email: user.email,
+        },
+      },
+    });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or role not found." });
+    }
+    if (isDuplicateKeyError(error)) {
+      return res.status(409).json({ message: "This user is already a team member." });
+    }
+    logProjectEvent(`Add member error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const updateProjectMember = async (req, res) => {
+  try {
+    const { projectId, membershipId } = req.params;
+    const { memberRole, status } = req.body || {};
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can manage members." });
+    }
+
+    const membership = await Membership.findOne({
+      _id: membershipId,
+      projectId: project._id,
+    });
+    if (!membership) {
+      return res.status(404).json({ message: "Team member not found." });
+    }
+
+    if (membership.userId.toString() === project.ownerId.toString()) {
+      return res.status(400).json({ message: "The project owner's membership cannot be changed." });
+    }
+
+    if (memberRole !== undefined) {
+      if (!["Admin", "Mentor", "Member"].includes(memberRole)) {
+        return res.status(400).json({
+          message: "memberRole must be one of: Admin, Mentor, Member.",
+        });
+      }
+      membership.memberRole = memberRole;
+    }
+
+    if (status !== undefined) {
+      if (!MEMBERSHIP_STATUS.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${MEMBERSHIP_STATUS.join(", ")}.`,
+        });
+      }
+      membership.status = status;
+    }
+
+    if (memberRole === undefined && status === undefined) {
+      return res.status(400).json({ message: "Nothing to update." });
+    }
+
+    await membership.save();
+    await syncProjectTeamCounts(project._id);
+
+    return res.status(200).json({ message: "Member updated.", membership });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or member not found." });
+    }
+    logProjectEvent(`Update member error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
+export const removeProjectMember = async (req, res) => {
+  try {
+    const { projectId, membershipId } = req.params;
+
+    const project = await Project.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: "Project not found." });
+    }
+
+    if (project.ownerId.toString() !== req.user.userId) {
+      return res.status(403).json({ message: "Only the project owner can remove members." });
+    }
+
+    const membership = await Membership.findOne({
+      _id: membershipId,
+      projectId: project._id,
+    });
+    if (!membership) {
+      return res.status(404).json({ message: "Team member not found." });
+    }
+
+    if (membership.userId.toString() === project.ownerId.toString()) {
+      return res.status(400).json({ message: "The project owner cannot be removed." });
+    }
+
+    membership.status = "Left";
+    await membership.save();
+    await syncProjectTeamCounts(project._id);
+
+    logProjectEvent(`Member removed from ${project.title}: ${membership.userId}`);
+
+    return res.status(200).json({ message: "Member removed." });
+  } catch (error) {
+    if (error?.name === "CastError") {
+      return res.status(404).json({ message: "Project or member not found." });
+    }
+    logProjectEvent(`Remove member error: ${error.message}`);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+
 export const listProjects = async (req, res) => {
   try {
     const {
@@ -523,7 +1017,7 @@ export const getProjectById = async (req, res) => {
         Membership.find({ projectId: project._id, status: "Active" })
           .populate(
             "userId",
-            "name email headline bio location skills links",
+            "name email username headline bio location skills links",
           )
           .populate("roleId", "title")
           .sort({ createdAt: 1 }),
@@ -603,6 +1097,8 @@ export const getProjectById = async (req, res) => {
         user: {
           id: member.userId._id,
           name: member.userId.name,
+          email: member.userId.email || "",
+          username: member.userId.username || null,
           headline: member.userId.headline || "",
           bio: member.userId.bio || "",
           location: member.userId.location || "",

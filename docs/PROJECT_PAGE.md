@@ -228,12 +228,50 @@ section on the dashboard. Each received application with a resume shows a
 - Resume upload, profile-resume reuse, and owner download all worked.
 - Frontend production build passed, including the dynamic `/projects/[projectId]` route.
 
-## 8. Known limitations / future work
+## 8. Owner workspace
+
+When the project owner opens `/projects/:projectId`, the public detail view is
+replaced by an owner workspace (`frontend/components/project-manager.jsx`). A
+"View public page" action switches back to the public layout, and "Manage
+project" returns to the workspace.
+
+The workspace has five tabs:
+
+| Tab | Capability |
+| --- | --- |
+| Overview | Stats, project brief, milestones, at-a-glance facts, quick actions. |
+| Team | List members, add a registered user by email, change team role (`Admin`/`Mentor`/`Member`), remove members. |
+| Roles | Add, edit, and delete roles; edit title, description, skills, slots, and status. |
+| Settings | Edit core project information, discovery metadata, dates, team size, skills, and tags. |
+| Shared library | Greyed-out placeholder for documents, assets, and file sharing (not implemented). |
+
+### Owner API endpoints
+
+All require the `accessToken` cookie and `X-CSRF-Token`. Non-owners receive
+`403`.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `PATCH` | `/api/projects/:projectId` | Update project information. Recomputes member/spot counts. |
+| `POST` | `/api/projects/:projectId/roles` | Add a role. |
+| `PATCH` | `/api/projects/:projectId/roles/:roleId` | Update a role. Slots cannot fall below accepted contributors. |
+| `DELETE` | `/api/projects/:projectId/roles/:roleId` | Delete a role and its non-accepted applications. Blocked when accepted contributors are assigned. |
+| `POST` | `/api/projects/:projectId/members` | Add an existing user by email. Respects `maxTeamSize`. |
+| `PATCH` | `/api/projects/:projectId/members/:membershipId` | Change a member's team role or status. |
+| `DELETE` | `/api/projects/:projectId/members/:membershipId` | Remove a member by setting their membership to `Left`. |
+
+The project owner's own membership cannot be changed or removed. Member changes
+recalculate `memberCount` and `spotsOpen`.
+
+## 9. Known limitations / future work
 
 - Owner accept/reject actions are not implemented; all applications stay
   `Pending`.
 - Accepting an application should eventually create a `Membership`, update role
   slots, and update project counts atomically.
-- No edit/archive project actions on the detail page.
+- Adding a member is direct (no invitation/acceptance step yet).
+- The shared library is a disabled placeholder; uploads, folders, and sharing
+  permissions do not exist yet.
+- Milestones are visible in the owner workspace but cannot be edited yet.
 - Share is a placeholder prompt; no social integrations.
 - Activity is still derived rather than event-sourced.

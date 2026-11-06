@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshCw, Sparkles } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { ChipPicker } from "@/components/chip-picker"
+import { Select } from "@/components/select"
 import { api } from "@/lib/api"
 import { createProject } from "@/lib/features/projects/projectsSlice"
 import {
@@ -177,6 +178,11 @@ export default function NewProjectPage() {
 
   const update = (key) => (e) => {
     const value = e.target.value
+    setForm((prev) => ({ ...prev, [key]: value }))
+    if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }))
+  }
+
+  const updateValue = (key) => (value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }))
   }
@@ -450,51 +456,38 @@ export default function NewProjectPage() {
                   />
                 </Field>
                 <Field label="Stage">
-                  <select
-                    className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                  <Select
+                    className="h-11"
                     value={form.stage}
-                    onChange={update("stage")}
-                  >
-                    {PROJECT_STAGES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={updateValue("stage")}
+                    options={PROJECT_STAGES}
+                  />
                 </Field>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Compensation" required error={errors.compensation}>
-                  <select
-                    className={`h-11 w-full border bg-white px-3 font-semibold outline-none focus:border-ink ${
-                      errors.compensation ? "border-red-600" : "border-line"
-                    }`}
+                  <Select
+                    className={`h-11 ${errors.compensation ? "border-red-600!" : ""}`}
                     value={form.compensation}
-                    onChange={update("compensation")}
-                  >
-                    <option value="">Select compensation</option>
-                    {COMPENSATION.map((c) => (
-                      <option key={c} value={c}>
-                        {c.charAt(0).toUpperCase() + c.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={updateValue("compensation")}
+                    placeholder="Select compensation"
+                    options={COMPENSATION.map((c) => ({
+                      value: c,
+                      label: c.charAt(0).toUpperCase() + c.slice(1),
+                    }))}
+                  />
                 </Field>
                 <Field label="Experience level" required error={errors.experienceLevel}>
-                  <select
-                    className={`h-11 w-full border bg-white px-3 font-semibold outline-none focus:border-ink ${
-                      errors.experienceLevel ? "border-red-600" : "border-line"
-                    }`}
+                  <Select
+                    className={`h-11 ${errors.experienceLevel ? "border-red-600!" : ""}`}
                     value={form.experienceLevel}
-                    onChange={update("experienceLevel")}
-                  >
-                    <option value="">Select experience level</option>
-                    {EXPERIENCE_LEVEL.map((lvl) => (
-                      <option key={lvl} value={lvl}>
-                        {lvl.charAt(0).toUpperCase() + lvl.slice(1)}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={updateValue("experienceLevel")}
+                    placeholder="Select experience level"
+                    options={EXPERIENCE_LEVEL.map((lvl) => ({
+                      value: lvl,
+                      label: lvl.charAt(0).toUpperCase() + lvl.slice(1),
+                    }))}
+                  />
                 </Field>
               </div>
             </div>
@@ -507,43 +500,34 @@ export default function NewProjectPage() {
           >
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Field label="Visibility">
-                <select
-                  className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                <Select
+                  className="h-11"
                   value={form.visibility}
-                  onChange={update("visibility")}
-                >
-                  {PROJECT_VISIBILITY.map((v) => (
-                    <option key={v} value={v}>
-                      {v.charAt(0).toUpperCase() + v.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={updateValue("visibility")}
+                  options={PROJECT_VISIBILITY.map((v) => ({
+                    value: v,
+                    label: v.charAt(0).toUpperCase() + v.slice(1),
+                  }))}
+                />
               </Field>
               <Field label="How members join">
-                <select
-                  className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                <Select
+                  className="h-11"
                   value={form.joinPolicy}
-                  onChange={update("joinPolicy")}
-                >
-                  {PROJECT_JOIN_POLICY.map((p) => (
-                    <option key={p} value={p}>
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={updateValue("joinPolicy")}
+                  options={PROJECT_JOIN_POLICY.map((p) => ({
+                    value: p,
+                    label: p.charAt(0).toUpperCase() + p.slice(1),
+                  }))}
+                />
               </Field>
               <Field label="Commitment">
-                <select
-                  className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                <Select
+                  className="h-11"
                   value={form.commitment}
-                  onChange={update("commitment")}
-                >
-                  {COMMITMENT.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={updateValue("commitment")}
+                  options={COMMITMENT}
+                />
               </Field>
               <Field label="Location">
                 <input
@@ -720,22 +704,19 @@ export default function NewProjectPage() {
                         <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
                           Status
                         </label>
-                        <select
-                          className="mt-1.5 h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                        <Select
+                          className="mt-1.5 h-11"
                           value={role.status}
-                          onChange={(e) => {
+                          onChange={(value) => {
                             setForm((prev) => ({
                               ...prev,
                               roles: prev.roles.map((r, i) =>
-                                i === idx ? { ...r, status: e.target.value } : r
+                                i === idx ? { ...r, status: value } : r
                               ),
                             }))
                           }}
-                        >
-                          <option value="Open">Open</option>
-                          <option value="Filled">Filled</option>
-                          <option value="Closed">Closed</option>
-                        </select>
+                          options={["Open", "Filled", "Closed"]}
+                        />
                       </div>
                     </div>
                   </div>

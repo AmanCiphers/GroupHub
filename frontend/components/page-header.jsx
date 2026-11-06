@@ -25,7 +25,7 @@ export function PageHeader({ eyebrowIcon: Icon, eyebrow, title, description, act
             {title}
           </h1>
         </div>
-        <div>
+        <div className="flex flex-col items-start gap-4">
           {description && (
             <p className="max-w-lg text-lg font-normal leading-relaxed text-subtle">{description}</p>
           )}

@@ -4,7 +4,7 @@ This document records the engineering work performed on the project, in order.
 It is intentionally detailed so a future contributor can understand what changed,
 why it changed, and how it was verified without replaying the conversation.
 
-**Last updated:** 2026-11-04
+**Last updated:** 2026-11-06
 
 > Historical context: `docs/PROJECT_ARCHITECTURE.md` is a snapshot from
 > 15 October 2026. It predates the project-domain backend and the work described
@@ -420,7 +420,47 @@ application and increments `applicantCount`.
 
 ---
 
-## 10. Changed-file index
+## 10. Owner project workspace
+
+### Behaviour
+- Opening `/projects/:projectId` as the owner now shows a dedicated workspace
+  instead of the public detail view. "View public page" previews the public
+  layout; "Manage project" returns to the workspace.
+- Tabs: Overview, Team, Roles, Settings, and Shared library.
+- **Team**: add a registered user by email, change a member's team role
+  (`Admin`/`Mentor`/`Member`), or remove them. The owner membership is protected.
+- **Roles**: add, edit, and delete roles. Slots cannot be reduced below the
+  number of accepted contributors. Deleting a role also removes its
+  non-accepted applications and is blocked when contributors are assigned.
+- **Settings**: edit project copy, category/stage/status/visibility/join
+  policy/commitment/compensation/experience, location, dates, team size,
+  contact information, skills, and tags.
+- **Shared library**: disabled placeholder for documents, assets, and file
+  sharing, marked "Coming soon".
+- Mutations reuse cookie auth and CSRF headers and refresh the project after
+  success.
+
+### Backend
+- New owner-only endpoints: `PATCH /api/projects/:projectId`,
+  `POST /api/projects/:projectId/members`,
+  `PATCH /api/projects/:projectId/members/:membershipId`,
+  `DELETE /api/projects/:projectId/members/:membershipId`,
+  `PATCH /api/projects/:projectId/roles/:roleId`, and
+  `DELETE /api/projects/:projectId/roles/:roleId`.
+- Member changes recalculate `memberCount` and `spotsOpen`.
+- Project detail member payload now includes member email and username.
+
+### Frontend
+- New `frontend/components/project-manager.jsx`.
+- `frontend/app/projects/[projectId]/page.jsx` renders the manager for owners
+  and adds public-preview/return actions.
+- `frontend/lib/api.js` adds project, role, and member management calls.
+
+### Verification
+- Backend `node --check` passed for changed files.
+- Frontend `next build` passed all routes, including the dynamic project page.
+
+## 11. Changed-file index
 
 ### Backend
 
@@ -448,11 +488,18 @@ application and increments `applicantCount`.
 - `backend/scripts/seedProjects.js` — idempotent seed; roles, memberships,
   applications, timestamps, owner profiles.
 - `backend/package.json` — `seed` script and `multer`.
+- `backend/controllers/project.controller.js` — owner project/role/member
+  management endpoints and team-count synchronisation.
+- `backend/routes/project.routes.js` — routes for project, role, and member
+  management.
 
 ### Frontend
 
 - `frontend/app/profile/page.jsx` — account settings, resume, password.
-- `frontend/app/projects/[projectId]/page.jsx` — project detail and applications.
+- `frontend/app/projects/[projectId]/page.jsx` — project detail, applications,
+  and owner workspace switch.
+- `frontend/components/project-manager.jsx` — owner workspace tabs for overview,
+  team, roles, settings, and the shared-library placeholder.
 - `frontend/components/apply-wizard.jsx` — three-step application wizard with
   pitch, availability/resume, and review steps.
 - `frontend/app/account/page.jsx` — safe post-login `next` redirect.

@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { api } from "@/lib/api"
+import { Select } from "@/components/select"
 import { COMMITMENT } from "@/lib/data/enums"
 
 const STEPS = [
@@ -283,18 +284,15 @@ export function ApplyWizard({
                 <label className="text-xs font-black uppercase tracking-[0.14em] text-faint">
                   Availability
                 </label>
-                <select
-                  className="mt-1.5 w-full border border-line bg-white p-3 font-semibold outline-none focus:border-ink"
+                <Select
+                  className="mt-1.5 p-3"
                   value={availability}
-                  onChange={(event) => setAvailability(event.target.value)}
-                >
-                  <option value="">Not specified</option>
-                  {COMMITMENT.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setAvailability}
+                  options={[
+                    { value: "", label: "Not specified" },
+                    ...COMMITMENT.map((c) => ({ value: c, label: c })),
+                  ]}
+                />
               </div>
 
               <div>

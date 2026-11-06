@@ -25,12 +25,24 @@ app.use((req, res, next) => {
     next();
 });
 
+const allowedOrigins = [
+    ...new Set(
+        [
+            process.env.FRONTEND_URL,
+            process.env.CLIENT_URL,
+            'http://localhost:3000',
+        ].filter(Boolean)
+    ),
+];
+
 app.use(
     cors({
-        origin:
-            process.env.FRONTEND_URL ||
-            process.env.CLIENT_URL ||
-            'http://localhost:3000',
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                return callback(null, true);
+            }
+            return callback(new Error('Not allowed by CORS'));
+        },
         credentials: true,
     })
 );

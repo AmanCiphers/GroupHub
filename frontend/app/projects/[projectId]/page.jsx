@@ -24,12 +24,14 @@ import {
   Target,
   UserPlus,
   Users,
+  Wrench,
 } from "lucide-react"
 
 import { PageHeader } from "@/components/page-header"
 import { api } from "@/lib/api"
 import { getInitials } from "@/lib/utils"
 import { ApplyWizard } from "@/components/apply-wizard"
+import { ProjectManager } from "@/components/project-manager"
 import {
   Skeleton,
   ListSkeleton,
@@ -158,6 +160,7 @@ export default function ProjectPage() {
 
   const [activeRole, setActiveRole] = useState(null)
   const [applySuccess, setApplySuccess] = useState(null)
+  const [ownerPreview, setOwnerPreview] = useState(false)
 
   useEffect(() => {
     if (!projectId) return
@@ -317,6 +320,18 @@ export default function ProjectPage() {
   if (!data) return <ProjectLoading />
 
   const { project, roles = [], members = [], viewer = {} } = data
+
+  if (viewer.isOwner && !ownerPreview) {
+    return (
+      <ProjectManager
+        data={data}
+        csrfToken={csrfToken}
+        onRefresh={() => setReloadKey((key) => key + 1)}
+        onPreview={() => setOwnerPreview(true)}
+      />
+    )
+  }
+
   const owner = project.ownerId || {}
   const acceptsApplications = ["Recruiting", "Active"].includes(project.status)
 
@@ -361,13 +376,24 @@ actions={
               </span>
             </div>
             <div className="flex flex-wrap gap-3">
-              <a
-                href="#open-roles"
-                className="inline-flex h-11 items-center gap-2 bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
-              >
-                Apply to a role
-                <ArrowRight className="size-4" />
-              </a>
+              {viewer.isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => setOwnerPreview(false)}
+                  className="inline-flex h-11 items-center gap-2 bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
+                >
+                  <Wrench className="size-4" />
+                  Manage project
+                </button>
+              ) : (
+                <a
+                  href="#open-roles"
+                  className="inline-flex h-11 items-center gap-2 bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
+                >
+                  Apply to a role
+                  <ArrowRight className="size-4" />
+                </a>
+              )}
               <Link
                 href="/find-projects"
                 className="inline-flex h-11 items-center gap-2 border border-ink px-5 text-sm font-black transition hover:bg-ink hover:text-white"

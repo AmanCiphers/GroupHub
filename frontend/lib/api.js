@@ -82,6 +82,38 @@ export const api = {
   listProjects: (params, signal) =>
     request(`/api/projects${toQueryString(params)}`, { signal }),
   getProject: (id, signal) => request(`/api/projects/${id}`, { signal }),
+  updateProject: (id, payload, csrfToken) =>
+    request(`/api/projects/${id}`, { method: 'PATCH', body: payload, csrfToken }),
+  addProjectRole: (id, payload, csrfToken) =>
+    request(`/api/projects/${id}/roles`, { method: 'POST', body: payload, csrfToken }),
+  updateProjectRole: (projectId, roleId, payload, csrfToken) =>
+    request(`/api/projects/${projectId}/roles/${roleId}`, {
+      method: 'PATCH',
+      body: payload,
+      csrfToken,
+    }),
+  deleteProjectRole: (projectId, roleId, csrfToken) =>
+    request(`/api/projects/${projectId}/roles/${roleId}`, {
+      method: 'DELETE',
+      csrfToken,
+    }),
+  addProjectMember: (projectId, payload, csrfToken) =>
+    request(`/api/projects/${projectId}/members`, {
+      method: 'POST',
+      body: payload,
+      csrfToken,
+    }),
+  updateProjectMember: (projectId, membershipId, payload, csrfToken) =>
+    request(`/api/projects/${projectId}/members/${membershipId}`, {
+      method: 'PATCH',
+      body: payload,
+      csrfToken,
+    }),
+  removeProjectMember: (projectId, membershipId, csrfToken) =>
+    request(`/api/projects/${projectId}/members/${membershipId}`, {
+      method: 'DELETE',
+      csrfToken,
+    }),
   applyToRole: (projectId, roleId, payload, csrfToken) => {
     const formData = new FormData()
     Object.entries(payload).forEach(([key, value]) => {

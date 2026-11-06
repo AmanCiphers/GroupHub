@@ -57,7 +57,7 @@ export function MultiSelect({
 
   return (
     <div ref={containerRef} className="relative">
-      <div className="mb-1.5 flex items-center justify-between">
+      <div className="mb-1.5 flex items-center justify-between ">
         <span className="text-xs font-black uppercase tracking-[0.14em] text-faint">
           {label}
         </span>

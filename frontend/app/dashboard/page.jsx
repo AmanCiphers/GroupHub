@@ -128,7 +128,7 @@ function DashboardLoading() {
         title="Keep every team moving."
         description="Track your projects, the teams you have joined, and the applications that need attention."
       />
-      <section className="px-6 py-8 sm:px-10 lg:px-20 xl:px-28">
+      <section className="px-6  py-8 sm:px-10 lg:px-20 xl:px-28">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <StatCardSkeleton key={index} />

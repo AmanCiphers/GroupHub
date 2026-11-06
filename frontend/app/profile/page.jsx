@@ -22,6 +22,7 @@ import {
 
 import { ChipPicker } from "@/components/chip-picker"
 import { PageHeader } from "@/components/page-header"
+import { Select } from "@/components/select"
 import { api } from "@/lib/api"
 import { setUser } from "@/lib/features/auth/authSlice"
 import { COMMITMENT, EXPERIENCE_LEVEL, SKILLS } from "@/lib/data/enums"
@@ -206,6 +207,11 @@ export default function ProfilePage() {
     setProfileMessage(null)
   }
 
+  const updateValue = (key) => (value) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setProfileMessage(null)
+  }
+
   const updateLink = (key) => (event) => {
     setForm((prev) => ({
       ...prev,
@@ -381,8 +387,8 @@ export default function ProfilePage() {
     form.links.github || form.links.website || form.links.linkedin
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <PageHeader
+    <div className="min-h-screen bg-canvas  text-ink">
+      <PageHeader class = "flex gap-3"
         eyebrow="Account"
         title="Account settings."
         description="Shape how teammates see you, share your resume, and keep your account secure."
@@ -391,7 +397,7 @@ export default function ProfilePage() {
             href="/dashboard"
             className="inline-flex h-11 items-center gap-2 border border-ink bg-ink px-5 text-sm font-black text-white transition hover:bg-transparent hover:text-ink"
           >
-            Back to dashboard
+            To dashboard
             <ArrowRight className="size-4" />
           </Link>
         }
@@ -499,33 +505,34 @@ export default function ProfilePage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <FormField label="Availability">
-                    <select
-                      className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                    <Select
+                      className="h-11"
                       value={form.availability}
-                      onChange={update("availability")}
-                    >
-                      <option value="">Not specified</option>
-                      {COMMITMENT.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={updateValue("availability")}
+                      options={[
+                        { value: "", label: "Not specified" },
+                        ...COMMITMENT.map((option) => ({
+                          value: option,
+                          label: option,
+                        })),
+                      ]}
+                    />
                   </FormField>
 
                   <FormField label="Experience level">
-                    <select
-                      className="h-11 w-full border border-line bg-white px-3 font-semibold outline-none focus:border-ink"
+                    <Select
+                      className="h-11"
                       value={form.experienceLevel}
-                      onChange={update("experienceLevel")}
-                    >
-                      <option value="">Not specified</option>
-                      {EXPERIENCE_LEVEL.map((option) => (
-                        <option key={option} value={option}>
-                          {option.charAt(0).toUpperCase() + option.slice(1)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={updateValue("experienceLevel")}
+                      options={[
+                        { value: "", label: "Not specified" },
+                        ...EXPERIENCE_LEVEL.map((option) => ({
+                          value: option,
+                          label:
+                            option.charAt(0).toUpperCase() + option.slice(1),
+                        })),
+                      ]}
+                    />
                   </FormField>
                 </div>
               </SettingsSection>
